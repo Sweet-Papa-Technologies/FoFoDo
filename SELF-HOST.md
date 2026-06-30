@@ -65,8 +65,8 @@ Cloud Functions 2nd gen load `functions/.env` automatically at deploy time. Ever
 | `QUOTAS_ENABLED` | config.ts | `false` | Per-API-key rate limits + daily caps. Off = unlimited. |
 | `QUOTA_PER_MINUTE` | config.ts | `60` | Per-key per-minute cap (only when `QUOTAS_ENABLED`). |
 | `QUOTA_PER_DAY` | config.ts | `5000` | Per-key per-day cap (only when `QUOTAS_ENABLED`). |
-| `FOFODO_AI_MODEL` | config.ts | `gemini-2.5-flash-lite` | Vertex model id for AI flows. |
-| `FOFODO_AI_LOCATION` | config.ts | `us-central1` | Vertex AI region. |
+| `FOFODO_AI_MODEL` | config.ts | `gemini-3.1-flash-lite` | Vertex model id for AI flows (Genkit ref `vertexai/<id>`). |
+| `FOFODO_AI_LOCATION` | config.ts | `global` | Vertex AI location. Gemini 3.1 Flash-Lite is served from `global`, not a region. |
 | `FOFODO_AI_GLOBAL_OFF` | ai.ts | _(unset)_ | Set to `1` to force ALL AI off regardless of per-user settings. |
 
 Flags accept `1`/`true` (case-insensitive) for on; anything else is off.
@@ -92,8 +92,9 @@ QUOTA_PER_MINUTE=60
 QUOTA_PER_DAY=5000
 
 # ---- AI (optional; requires Vertex AI enabled on the project) --------------
-FOFODO_AI_MODEL=gemini-2.5-flash-lite
-FOFODO_AI_LOCATION=us-central1
+# Gemini 3.1 Flash-Lite is served from the "global" location, not a region.
+FOFODO_AI_MODEL=gemini-3.1-flash-lite
+FOFODO_AI_LOCATION=global
 # Set to 1 to hard-disable ALL AI everywhere (overrides per-user settings):
 # FOFODO_AI_GLOBAL_OFF=1
 ```

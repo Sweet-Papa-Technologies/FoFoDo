@@ -18,12 +18,19 @@ async function getAi(): Promise<any | null> {
   try {
     // Opaque specifiers: keep Genkit's enormous type graph out of `tsc` (it OOMs
     // the compiler) while still loading the real module lazily at runtime.
+    // Vertex plugin lives in @genkit-ai/google-genai (the older @genkit-ai/vertexai
+    // package can't reach the "global" location that serves Gemini 3.1 Flash-Lite).
     const genkitMod: any = await import("genkit" as string);
-    const vertexMod: any = await import("@genkit-ai/vertexai" as string);
+    const vertexMod: any = await import("@genkit-ai/google-genai" as string);
     const genkit = genkitMod.genkit;
     const vertexAI = vertexMod.vertexAI;
     _ai = genkit({
-      plugins: [vertexAI({ location: CONFIG.AI_LOCATION })],
+      plugins: [
+        vertexAI({
+          location: CONFIG.AI_LOCATION,
+          projectId: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
+        }),
+      ],
       model: `vertexai/${CONFIG.AI_MODEL}`,
     });
     return _ai;

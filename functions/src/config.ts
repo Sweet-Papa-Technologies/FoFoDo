@@ -37,9 +37,13 @@ export const CONFIG = {
   QUOTA_PER_MINUTE: Number(process.env.QUOTA_PER_MINUTE || 60),
   QUOTA_PER_DAY: Number(process.env.QUOTA_PER_DAY || 5000),
 
-  /** AI model (OPEN-QUESTIONS Q4: Gemini Flash-Lite on Vertex). Overridable. */
-  AI_MODEL: process.env.FOFODO_AI_MODEL || "gemini-2.5-flash-lite",
-  AI_LOCATION: process.env.FOFODO_AI_LOCATION || "us-central1",
+  /**
+   * AI model (OPEN-QUESTIONS Q4: Gemini 3.1 Flash-Lite on Vertex). Overridable.
+   * gemini-3.1-flash-lite is served from the "global" location (not us-central1),
+   * so AI_LOCATION defaults to "global". The Genkit model ref is `vertexai/<model>`.
+   */
+  AI_MODEL: process.env.FOFODO_AI_MODEL || "gemini-3.1-flash-lite",
+  AI_LOCATION: process.env.FOFODO_AI_LOCATION || "global",
 };
 
 /**

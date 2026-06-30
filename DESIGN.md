@@ -173,7 +173,7 @@ Deterministic fallbacks that always work with AI off:
 - **Avoidance audit** — `avoidanceStats` renders the deterministic stats (quiet hats, longest-paused project, most-pushed task); only the prose summary is omitted when AI is off.
 - **Triage / breakdown** — return `{ aiDisabled: true }` with a null suggestion when off.
 
-Model: `gemini-2.5-flash-lite` on Vertex AI (`us-central1`), both overridable via `FOFODO_AI_MODEL` / `FOFODO_AI_LOCATION`.
+Model: `gemini-3.1-flash-lite` on Vertex AI, served from the **`global`** location (it is not available in `us-central1`). Wired via `@genkit-ai/google-genai`'s `vertexAI` plugin (Genkit ref `vertexai/gemini-3.1-flash-lite`). Both overridable via `FOFODO_AI_MODEL` / `FOFODO_AI_LOCATION`.
 
 ---
 
