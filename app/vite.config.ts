@@ -36,9 +36,15 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // Material Symbols variable font ~3.9MB
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
 
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api/, /^\/mcp/],
+        // Do NOT let the SW serve the SPA shell for backend routes — otherwise the
+        // OAuth consent page (/oauth/authorize) gets hijacked into the SPA, which
+        // then redirects to "/" and the connect flow never returns to the client.
+        navigateFallbackDenylist: [/^\/api/, /^\/mcp/, /^\/oauth/, /^\/__\//, /^\/\.well-known/],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith("/api/"),

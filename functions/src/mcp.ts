@@ -47,6 +47,18 @@ function buildServer(uid: string): McpServer {
     { description: "Mark a task done.", inputSchema: { id: z.string() } },
     async ({ id }: any) => json(await repo.completeTask(uid, id)));
 
+  (server as any).registerTool("delete_task",
+    { description: "Permanently delete a task (and its comments). This cannot be undone.", inputSchema: { id: z.string() } },
+    async ({ id }: any) => json(await repo.deleteTask(uid, id)));
+
+  (server as any).registerTool("set_active_bet",
+    { description: "Set, update, or clear the Active Bet (Top Priority) — the single project pinned on the dashboard, with an optional free-text 'leading indicator' (success signal). Pass projectId to set/update it (optionally with leadingIndicator), or clear:true to remove the Active Bet.",
+      inputSchema: { projectId: z.string().optional(), leadingIndicator: z.string().nullable().optional(), clear: z.boolean().optional() } },
+    async ({ projectId, leadingIndicator, clear }: any) => {
+      if (clear || !projectId) return json(await repo.clearActiveBet(uid));
+      return json(await repo.setActiveBet(uid, projectId, leadingIndicator ?? null));
+    });
+
   (server as any).registerTool("set_active",
     { description: "Commit a task to active. Enforces WIP-3: if 3 are already active, pass bumpTaskId (one of the active task ids) to make room, or omit it to receive the current 3.",
       inputSchema: { id: z.string(), bumpTaskId: z.string().optional() } },

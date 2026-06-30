@@ -84,6 +84,8 @@ All tools return their result as a JSON text block (the underlying repo object, 
 | **`list_tasks`** | `view?` (string: `today`\|`active`\|`next`\|`inbox`\|`done`\|`snoozed`\|`by_hat`\|`by_project`\|`all`; default `active`), `hatId?`, `projectId?` | `{ tasks: [...] }` filtered by the view (respects paused-project hiding). |
 | **`update_task`** | `id` (string), and any of `title?`, `notes?`, `hatId?`, `projectId?` (nullable), `due?` (number, nullable), `status?`, `workStatus?` (`none`\|`in_progress`\|`blocked`\|`waiting`\|`review`) | The updated task. **`status: "active"` is not allowed** — use `set_active`. `workStatus` is the secondary progress label shown on the task. |
 | **`complete_task`** | `id` (string) | The task marked `done`. |
+| **`delete_task`** | `id` (string) | Permanently deletes the task (and its comments). Returns `{ id, deleted: true }`. |
+| **`set_active_bet`** | `projectId?` (string), `leadingIndicator?` (nullable string), `clear?` (boolean) | Set/update the Active Bet (Top Priority) for a project with an optional success-signal, or pass `clear:true` (or omit `projectId`) to unpin it. |
 | **`set_active`** | `id` (string), `bumpTaskId?` (string) | On success, `{ id, status: "active", activeCount, bumped? }`. **Enforces WIP-3 identically to the API:** if 3 are already active and no `bumpTaskId` is given, returns `{ error: "wip3_limit", message, activeTasks: [...] }`; re-call with `bumpTaskId` set to one of those ids to swap. |
 | **`snooze_task`** | `id` (string), `until?` (number, epoch ms) | The snoozed task; it returns to `next` on/after `until`. Increments the avoidance `pushCount`. |
 | **`search`** | `query` (string) | `{ tasks: [...], projects: [...] }` — substring match over task titles/notes and project names. |

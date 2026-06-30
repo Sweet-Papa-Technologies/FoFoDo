@@ -130,6 +130,7 @@ app.patch("/projects/:id", wrap(async (req, res) => res.json(await repo.updatePr
 app.post("/projects/:id/active-bet", wrap(async (req, res) =>
   res.json(await repo.setActiveBet(req.principal.uid, req.params.id, req.body?.leadingIndicator ?? null))
 ));
+app.delete("/active-bet", wrap(async (req, res) => res.json(await repo.clearActiveBet(req.principal.uid))));
 
 // ---- hats -----------------------------------------------------------------
 app.get("/hats", wrap(async (req, res) => res.json({ hats: await repo.listHats(req.principal.uid) })));

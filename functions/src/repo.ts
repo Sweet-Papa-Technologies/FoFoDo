@@ -269,6 +269,15 @@ export async function setActiveBet(uid: string, projectId: string, leadingIndica
   return { id: d.id, ...(d.data() as any) };
 }
 
+/** Clear the Active Bet entirely (no project flagged). */
+export async function clearActiveBet(uid: string) {
+  const current = await projectsRef(uid).where("isActiveBet", "==", true).get();
+  const batch = db.batch();
+  current.docs.forEach((d) => batch.update(d.ref, { isActiveBet: false, leadingIndicator: null }));
+  await batch.commit();
+  return { cleared: current.size };
+}
+
 // ---- Hats -----------------------------------------------------------------
 
 export async function listHats(uid: string) {

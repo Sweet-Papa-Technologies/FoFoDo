@@ -43,6 +43,7 @@ export const api = {
   avoidance: () => req("GET", "/avoidance"),
   setActiveBet: (projectId: string, leadingIndicator: string | null) =>
     req("POST", `/projects/${projectId}/active-bet`, { leadingIndicator }),
+  clearActiveBet: () => req("DELETE", "/active-bet"),
   whatNow: (energy?: string) => req("POST", "/ai/what-now", { energy }),
   breakdown: (title: string, notes?: string) => req("POST", "/ai/breakdown", { title, notes }),
   triage: (title: string, notes?: string) => req("POST", "/ai/triage", { title, notes }),

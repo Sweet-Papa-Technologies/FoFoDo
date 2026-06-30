@@ -231,63 +231,106 @@ function consentPage(q: Record<string, string>, clientName: string): string {
     client_id: q.client_id, redirect_uri: q.redirect_uri, code_challenge: q.code_challenge,
     state: q.state || "", scope: q.scope || "mcp", resource: q.resource || MCP_RESOURCE,
   });
+  let clientHost = "the app";
+  try { clientHost = new URL(q.redirect_uri).host; } catch { /* keep default */ }
   return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Connect to FoFoDo</title>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>
-  body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#1a1613;color:#f4e9df;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center}
-  .card{background:rgba(255,224,196,.05);border:1px solid rgba(255,235,215,.1);backdrop-filter:blur(12px);border-radius:16px;padding:32px;width:360px;max-width:92vw;text-align:center}
-  h1{font-size:26px;margin:0 0 4px}.muted{color:#cdbdae;font-size:14px;margin:0 0 20px}
+  body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:#1a1613;color:#f4e9df;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px}
+  .card{background:rgba(255,224,196,.05);border:1px solid rgba(255,235,215,.1);border-radius:16px;padding:32px;width:380px;max-width:92vw;text-align:center}
+  h1{font-size:26px;margin:0 0 4px}.muted{color:#cdbdae;font-size:14px;margin:0 0 16px;line-height:1.5}
   button{font:inherit;font-weight:600;border:none;border-radius:12px;padding:12px 16px;width:100%;cursor:pointer;margin-top:8px}
-  .primary{background:#f0a868;color:#3a2410}.ghost{background:#322820;color:#f4e9df;border:1px solid rgba(255,235,215,.1)}
+  .primary{background:#f0a868;color:#3a2410}.ghost{background:#322820;color:#f4e9df;border:1px solid rgba(255,235,215,.12)}
+  a.primary{display:block;text-decoration:none;text-align:center}
   input{font:inherit;width:100%;box-sizing:border-box;padding:11px 12px;margin-top:8px;border-radius:10px;border:1px solid rgba(255,235,215,.15);background:#221d19;color:#f4e9df}
   .scope{background:#221d19;border-radius:10px;padding:12px;text-align:left;font-size:13px;color:#cdbdae;margin:16px 0}
   .err{color:#ff9b86;font-size:13px;min-height:18px;margin-top:8px}
+  .or{color:#8a7e70;font-size:12px;margin:14px 0 2px}
+  .check{font-size:42px;line-height:1}
 </style></head><body>
 <div class="card">
   <h1>FoFoDo</h1>
-  <p class="muted"><b>${clientName}</b> wants to connect to your FoFoDo tasks</p>
+  <p class="muted"><b>${clientName}</b> wants to connect to your FoFoDo tasks.</p>
+
+  <div id="loading">Loading…</div>
+
   <div id="signin" style="display:none">
     <button class="primary" id="google">Continue with Google</button>
-    <input id="email" type="email" placeholder="Email"/>
-    <input id="password" type="password" placeholder="Password"/>
-    <button class="ghost" id="emailbtn">Sign in with email</button>
+    <div class="or">or sign in with email</div>
+    <input id="email" type="email" placeholder="Email" autocomplete="username"/>
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password"/>
+    <button class="ghost" id="emailbtn">Sign in</button>
   </div>
+
   <div id="approve" style="display:none">
-    <div class="scope">This will let it capture, view, update and complete your tasks (respecting the WIP‑3 limit). You can revoke access any time.</div>
+    <div class="scope">Allow <b>${clientName}</b> to capture, view, update and complete your tasks (always respecting the WIP‑3 limit). You can revoke access any time in FoFoDo → Settings → API keys.</div>
     <p class="muted" id="who"></p>
-    <button class="primary" id="allow">Approve access</button>
+    <button class="primary" id="allow">Approve &amp; connect</button>
     <button class="ghost" id="deny">Cancel</button>
   </div>
+
+  <div id="done" style="display:none">
+    <div class="check">✅</div>
+    <p class="muted" id="donemsg">Connected! Returning you to ${clientHost}…</p>
+    <a class="primary" id="continue" href="#">Continue to ${clientHost}</a>
+  </div>
+
   <div class="err" id="err"></div>
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-  import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
+  import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged,
+           GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult,
            signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
   const PARAMS = ${params};
   const app = initializeApp(${cfg});
   const auth = getAuth(app);
   const $ = (id) => document.getElementById(id);
+  const show = (id) => { ["loading","signin","approve","done"].forEach(x=>$(x).style.display = x===id ? "block":"none"); };
   const err = (m) => { $("err").textContent = m || ""; };
+
+  setPersistence(auth, browserLocalPersistence).catch(()=>{});
+  // Complete any redirect-based sign-in that just returned to this page.
+  getRedirectResult(auth).catch((e)=>{ if(e&&e.message) err(e.message.replace("Firebase:","")); });
+
   onAuthStateChanged(auth, (user) => {
-    $("signin").style.display = user ? "none" : "block";
-    $("approve").style.display = user ? "block" : "none";
-    if (user) $("who").textContent = "Signed in as " + (user.email || user.uid);
+    if (user) { $("who").textContent = "Signed in as " + (user.email || "your account"); show("approve"); }
+    else show("signin");
   });
-  $("google").onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e){ err(e.message); } };
-  $("emailbtn").onclick = async () => {
-    try { await signInWithEmailAndPassword(auth, $("email").value, $("password").value); } catch(e){ err(e.message.replace("Firebase:","")); }
-  };
-  $("deny").onclick = () => { location.href = PARAMS.redirect_uri + "?error=access_denied" + (PARAMS.state ? "&state="+encodeURIComponent(PARAMS.state) : ""); };
-  $("allow").onclick = async () => {
+
+  $("google").onclick = async () => {
     err("");
+    // Popups are usually blocked inside connector/OAuth browsers — prefer redirect.
+    try { await signInWithRedirect(auth, new GoogleAuthProvider()); }
+    catch(e){ try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e2){ err(e2.message); } }
+  };
+  $("emailbtn").onclick = async () => {
+    err("");
+    try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value); }
+    catch(e){ err((e.message||"Sign-in failed").replace("Firebase:","")); }
+  };
+  $("email").addEventListener("keyup",(e)=>{ if(e.key==="Enter") $("emailbtn").click(); });
+  $("password").addEventListener("keyup",(e)=>{ if(e.key==="Enter") $("emailbtn").click(); });
+
+  $("deny").onclick = () => {
+    const u = PARAMS.redirect_uri + "?error=access_denied" + (PARAMS.state ? "&state="+encodeURIComponent(PARAMS.state) : "");
+    location.assign(u);
+  };
+
+  $("allow").onclick = async () => {
+    err(""); $("allow").disabled = true; $("allow").textContent = "Connecting…";
     try {
       const idToken = await auth.currentUser.getIdToken();
       const r = await fetch("/oauth/approve", { method:"POST", headers:{"content-type":"application/json"},
         body: JSON.stringify({ idToken, ...PARAMS }) });
       const data = await r.json();
-      if (data.redirect) location.href = data.redirect; else err(data.error || "Failed");
-    } catch(e) { err(e.message); }
+      if (!data.redirect) { err(data.error || "Could not authorize."); $("allow").disabled=false; $("allow").textContent="Approve & connect"; return; }
+      // Show confirmation, set the manual fallback link, and auto-redirect.
+      $("continue").setAttribute("href", data.redirect);
+      show("done");
+      setTimeout(() => { try { location.assign(data.redirect); } catch(_){} }, 600);
+    } catch(e) { err(e.message); $("allow").disabled=false; $("allow").textContent="Approve & connect"; }
   };
 </script></body></html>`;
 }
