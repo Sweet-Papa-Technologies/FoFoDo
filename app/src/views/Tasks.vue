@@ -1,5 +1,6 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-px-md" style="padding-top: var(--margin-focus); padding-bottom: 96px">
+   <div class="focus-col">
     <div class="row items-center justify-between q-mb-md">
       <div class="row items-center q-gutter-sm">
         <div class="text-h6">{{ title }}</div>
@@ -33,6 +34,7 @@
       {{ emptyMsg }}
     </div>
     <TaskItem v-for="t in list" :key="t.id" :task="t" />
+   </div>
   </q-page>
 </template>
 
@@ -57,12 +59,12 @@ const project = computed(() => (props.view === "by_project" ? projectById(projec
 const list = computed(() => viewTasks(props.view, hatKey.value, projectId.value));
 
 const TITLES: Record<string, string> = {
-  today: "Your 3 · Active", active: "Active", next: "Next", inbox: "Inbox",
-  snoozed: "Snoozed", done: "Done (recent)", by_hat: "By Hat",
+  today: "Your 3 · In focus", active: "In focus", next: "Next up", inbox: "Inbox",
+  snoozed: "Later", done: "Done", by_hat: "Hat",
 };
 const title = computed(() => {
   if (props.view === "by_hat" && hatKey.value)
-    return `Hat · ${state.hats.find((h) => h.key === hatKey.value)?.name || hatKey.value}`;
+    return `${state.hats.find((h) => h.key === hatKey.value)?.name || hatKey.value} · hat`;
   if (props.view === "by_project") return project.value?.name || "Project";
   return TITLES[props.view] || "Tasks";
 });
@@ -70,10 +72,10 @@ const title = computed(() => {
 const emptyMsg = computed(() => {
   if (props.view === "by_project") return "No tasks in this project yet — add one with “Add task”.";
   return ({
-    inbox: "Inbox zero. Capture lands here first.",
-    next: "Nothing queued. Triage your inbox.",
-    today: "No active tasks. Commit to up to three with the ⚡ button.",
-    snoozed: "Nothing snoozed. Backing off is allowed when you need it.",
+    inbox: "Inbox zero. Anything you capture lands here first.",
+    next: "Nothing queued up. Sort a few items from your Inbox.",
+    today: "Nothing in focus. Pull up to three tasks in with the ⚡ button — that’s your limit.",
+    snoozed: "Nothing pushed to Later. Backing off is allowed when you need it.",
     done: "Nothing finished yet.",
     by_hat: "No tasks under this hat.",
   } as Record<string, string>)[props.view] || "Nothing here.";

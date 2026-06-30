@@ -1,33 +1,38 @@
 <template>
-  <q-page class="q-pa-md" style="max-width: 760px; margin: 0 auto">
-    <div class="text-h6 q-mb-md">Settings</div>
+  <q-page class="q-px-md" style="padding-top: var(--margin-focus); padding-bottom: 96px">
+   <div class="focus-col">
+    <div class="headline-lg q-mb-lg">Settings</div>
 
     <!-- Preferences -->
     <q-card flat bordered class="fofo-tile q-mb-md">
       <q-card-section>
         <q-toggle :model-value="state.settings.aiEnabled" @update:model-value="v => save({ aiEnabled: v })"
-                  label="AI features" color="accent" />
-        <div class="text-caption text-grey q-ml-lg">Master kill switch. Off ⇒ zero model calls; every flow still works deterministically.</div>
+                  label="AI helpers" color="secondary" />
+        <div class="text-caption text-grey q-ml-lg">Master on/off switch. When off, FoFoDo makes zero AI calls and every feature still works.</div>
         <q-separator class="q-my-sm" />
         <q-toggle :model-value="state.settings.cadencePrompts" @update:model-value="v => save({ cadencePrompts: v })"
-                  label="Cadence prompts (daily / weekly reviews)" />
+                  label="Review reminders" />
+        <div class="text-caption text-grey q-ml-lg">Gentle daily / weekly nudges to pick your 3 and do a quick review.</div>
         <q-separator class="q-my-sm" />
         <div class="row items-center q-gutter-md">
           <span>Theme</span>
           <q-btn-toggle :model-value="state.settings.theme" @update:model-value="v => save({ theme: v })"
                         no-caps rounded unelevated :options="[{label:'Dark',value:'dark'},{label:'Light',value:'light'}]" color="grey-9" toggle-color="primary" />
         </div>
+        <q-separator class="q-my-sm" />
+        <q-btn flat dense no-caps color="primary" icon="sym_o_replay" label="Replay the welcome tour" @click="replayTour" />
       </q-card-section>
     </q-card>
 
     <!-- Hats -->
     <q-card flat bordered class="fofo-tile q-mb-md">
       <q-card-section>
-        <div class="text-subtitle2 q-mb-sm">Hats (rename only — the four slots are fixed)</div>
+        <div class="text-subtitle2 q-mb-xs">Your hats</div>
+        <div class="text-caption text-grey q-mb-sm">The four areas every task belongs to. Rename them to fit your life — the four slots are fixed.</div>
         <div v-for="h in state.hats" :key="h.id" class="row items-center q-gutter-sm q-mb-xs">
           <span class="hat-dot" :style="{ background: hatColor(h.key) }" />
           <q-input dense filled :model-value="h.name" @change="(v: any) => renameHat(h.id, String(v))" style="max-width: 220px" />
-          <span class="text-caption text-grey">{{ h.key }}</span>
+          <span class="text-caption text-grey">{{ hatDesc(h.key) }}</span>
         </div>
       </q-card-section>
     </q-card>
@@ -72,6 +77,7 @@
     </q-card>
 
     <div class="text-caption text-grey text-center">FoFoDo v1 · {{ state.user?.email }} · MIT</div>
+   </div>
   </q-page>
 </template>
 
@@ -81,8 +87,12 @@ import { useQuasar } from "quasar";
 import { state, saveSettings, renameHat } from "../store";
 import { api } from "../api";
 import { hatColor } from "../hats";
+import { HAT_DESC } from "../copy";
+import { startTour } from "../onboarding";
 
 const $q = useQuasar();
+const hatDesc = (k: string) => HAT_DESC[k] || k;
+const replayTour = () => startTour(false);
 const keys = ref<any[]>([]);
 const freshKey = ref("");
 const keysBusy = ref(false); const expBusy = ref(false);

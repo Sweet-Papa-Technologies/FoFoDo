@@ -34,6 +34,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff,woff2}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // Material Symbols variable font ~3.9MB
+
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/mcp/],
         runtimeCaching: [
