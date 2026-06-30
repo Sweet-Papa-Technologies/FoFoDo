@@ -151,6 +151,7 @@ const primaryNav = computed<NavItem[]>(() => [
   { label: NAV.inbox, icon: "sym_o_inbox", to: "/tasks/inbox", tour: "nav-inbox", badge: { value: inboxCount.value } },
   { label: NAV.snoozed, icon: "sym_o_snooze", to: "/tasks/snoozed" },
   { label: NAV.done, icon: "sym_o_check_circle", to: "/tasks/done" },
+  { label: "Board", icon: "sym_o_view_kanban", to: "/board" },
   { label: "Analytics", icon: "sym_o_insights", to: "/analytics" },
 ]);
 const bottomNav = computed<NavItem[]>(() => [

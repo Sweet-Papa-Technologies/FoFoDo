@@ -104,6 +104,21 @@ export async function aiBreakdown(title: string, notes?: string): Promise<string
   return Array.isArray(arr) ? arr.map(String).slice(0, 6) : null;
 }
 
+/** Ask a free-form question about the whole task board. `context` is a compact
+ * rendering of the user's tasks (status, hat, due, etc.). Returns prose advice,
+ * kind and concrete; null on failure → caller falls back. */
+export async function aiAskBoard(question: string, context: string): Promise<string | null> {
+  return generate(
+    `You are FoFoDo's kind, concise productivity coach. The user works under a strict ` +
+    `WIP-3 rule (at most 3 tasks "in focus" at once) across four "hats" (areas): ` +
+    `Steer/direction, Build/making, Grow/growth, Run/admin. Here is their current board ` +
+    `as a list (one task per line: [status] title · hat · due · postponedN):\n\n${context}\n\n` +
+    `Answer the user's question about this board. Be specific (reference real task titles), ` +
+    `practical, and brief (a few sentences or a short list). Never scold; be encouraging.\n\n` +
+    `Question: ${question}`
+  );
+}
+
 function parseJson(s: string | null): any {
   if (!s) return null;
   try {
