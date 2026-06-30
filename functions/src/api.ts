@@ -8,7 +8,7 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { authenticate, AuthError, Principal } from "./auth";
 import { Wip3Error, NotFoundError, setActive } from "./wip3";
-import { aiEnabledFor, aiAvoidanceSummary, aiSuggestTriage, aiWhatNow, aiBreakdown } from "./ai";
+import { aiEnabledFor, aiAvoidanceSummary, aiSuggestTriage, aiWhatNow, aiBreakdown, aiAskBoard } from "./ai";
 import { captureTask } from "./capture";
 import { userRef } from "./firebase";
 import { createApiKey, listApiKeys, revokeApiKey } from "./apikeys";
@@ -181,6 +181,28 @@ app.post("/ai/what-now", wrap(async (req, res) => {
 app.post("/ai/breakdown", wrap(async (req, res) => {
   if (!aiEnabledFor(await userSettings(req.principal.uid))) return res.json({ steps: null, aiDisabled: true });
   res.json({ steps: await aiBreakdown(req.body?.title || "", req.body?.notes) });
+}));
+
+// Ask AI about the whole board (used by the Kanban view). Builds a compact list
+// of the user's tasks server-side so the client only sends the question.
+app.post("/ai/ask", wrap(async (req, res) => {
+  const question = String(req.body?.question || "").slice(0, 1000);
+  if (!question) return res.status(400).json({ error: "question_required" });
+  if (!aiEnabledFor(await userSettings(req.principal.uid))) return res.json({ answer: null, aiDisabled: true });
+  const tasks = await repo.listTasks(req.principal.uid, "all", { limit: 500 });
+  const projects = await repo.listProjects(req.principal.uid);
+  const pname = (id?: string | null) => projects.find((p: any) => p.id === id)?.name;
+  const STAGE: Record<string, string> = { inbox: "Inbox", next: "Next", active: "InFocus", done: "Done", snoozed: "Later" };
+  const lines = (tasks as any[]).slice(0, 400).map((t) => {
+    const bits = [`[${STAGE[t.status] || t.status}]`, t.title, `· ${t.hatId}`];
+    if (t.projectId && pname(t.projectId)) bits.push(`· proj:${pname(t.projectId)}`);
+    if (t.workStatus && t.workStatus !== "none") bits.push(`· ${t.workStatus}`);
+    if (t.due) bits.push(`· due ${new Date(t.due).toISOString().slice(0, 10)}`);
+    if ((t.pushCount || 0) > 0) bits.push(`· postponed${t.pushCount}`);
+    return bits.join(" ");
+  });
+  const answer = await aiAskBoard(question, lines.join("\n") || "(no tasks)");
+  res.json({ answer, count: lines.length });
 }));
 
 // ---- settings -------------------------------------------------------------

@@ -165,6 +165,18 @@ export const snoozeTask = (id: string, until: number | null) =>
 export const unsnoozeTask = (id: string) =>
   updateDoc(tref(id), { status: "next", snoozeUntil: null });
 
+/** Move a task to a lifecycle status (Kanban drag/drop). Routes through the
+ * right path: `active` goes through the WIP-3 server gate; done/snoozed/inbox/next
+ * are direct, offline-capable writes. Returns the activate result for `active`. */
+export async function moveTaskToStatus(task: Task, status: string): Promise<{ ok: true } | { wip3: true; activeTasks: any[] }> {
+  if (task.status === status) return { ok: true };
+  if (status === "active") return activate(task.id);
+  if (status === "done") { await completeTask(task.id); return { ok: true }; }
+  if (status === "snoozed") { await snoozeTask(task.id, null); return { ok: true }; }
+  await updateTask(task.id, { status: status as any });
+  return { ok: true };
+}
+
 /** WIP-3 activation goes through the server gate. Returns {ok} or {wip3, activeTasks}. */
 export async function activate(id: string, bumpTaskId?: string | null): Promise<{ ok: true } | { wip3: true; activeTasks: any[] }> {
   try {

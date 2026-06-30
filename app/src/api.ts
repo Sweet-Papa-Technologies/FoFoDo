@@ -46,6 +46,7 @@ export const api = {
   clearActiveBet: () => req("DELETE", "/active-bet"),
   whatNow: (energy?: string) => req("POST", "/ai/what-now", { energy }),
   breakdown: (title: string, notes?: string) => req("POST", "/ai/breakdown", { title, notes }),
+  ask: (question: string) => req("POST", "/ai/ask", { question }),
   triage: (title: string, notes?: string) => req("POST", "/ai/triage", { title, notes }),
   // API keys (server-only)
   listKeys: () => req("GET", "/keys"),
