@@ -129,7 +129,7 @@ async function loadAudit() {
 function setBet() {
   if (!state.projects.length) { $q.notify({ message: "Create a project first (in a list’s + menu)." }); return; }
   $q.dialog({
-    title: "Set Active Bet", options: { type: "radio", items: state.projects.map((p) => ({ label: p.name, value: p.id })) },
+    title: "Set Active Bet", options: { type: "radio", model: "", items: state.projects.map((p) => ({ label: p.name, value: p.id })) },
     cancel: true,
   }).onOk((projectId: string) => {
     $q.dialog({ title: "Leading indicator", message: "The one number that tells you it’s working:", prompt: { model: "" }, cancel: true })

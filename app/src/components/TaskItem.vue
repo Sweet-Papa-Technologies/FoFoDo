@@ -9,6 +9,7 @@
         <span class="hat-dot" :style="{ background: hatColor(task.hatId) }" />
         <span>{{ hatName(task.hatId) }}</span>
         <span v-if="task.due">· due {{ fmt(task.due) }}</span>
+        <span v-if="projectName">· <q-icon name="folder" size="13px" /> {{ projectName }}</span>
         <span v-if="task.status === 'active'" class="text-primary">· active</span>
         <span v-if="(task.pushCount || 0) > 0">· pushed {{ task.pushCount }}×</span>
       </q-item-label>
@@ -22,6 +23,7 @@
             <q-list style="min-width: 180px">
               <q-item clickable v-close-popup @click="editDialog = true"><q-item-section>Edit</q-item-section></q-item>
               <q-item clickable v-close-popup @click="setHat"><q-item-section>Change hat…</q-item-section></q-item>
+              <q-item clickable v-close-popup @click="setProject"><q-item-section>Move to project…</q-item-section></q-item>
               <q-item clickable v-close-popup @click="snooze(1)"><q-item-section>Snooze 1 day</q-item-section></q-item>
               <q-item clickable v-close-popup @click="snooze(7)"><q-item-section>Snooze 1 week</q-item-section></q-item>
               <q-item v-if="task.status === 'snoozed'" clickable v-close-popup @click="unsnooze(task.id)"><q-item-section>Wake now</q-item-section></q-item>
@@ -68,16 +70,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { useQuasar } from "quasar";
 import type { Task } from "../store";
 import {
   activate, completeTask, uncompleteTask, snoozeTask, unsnoozeTask, deleteTask, updateTask, hatName, state,
+  moveTaskToProject, projectById,
 } from "../store";
 import { hatColor } from "../hats";
 
 const props = defineProps<{ task: Task }>();
 const $q = useQuasar();
+
+const projectName = computed(() => projectById(props.task.projectId || undefined)?.name || "");
 
 const editDialog = ref(false);
 const draftTitle = ref(props.task.title);
@@ -99,6 +104,17 @@ function setHat() {
     title: "Change hat", options: { type: "radio", model: props.task.hatId,
       items: state.hats.map((h) => ({ label: h.name, value: h.key })) }, cancel: true,
   }).onOk((hat: string) => updateTask(props.task.id, { hatId: hat }));
+}
+function setProject() {
+  const items = [
+    { label: "— No project —", value: "" },
+    ...state.projects.map((p) => ({ label: p.name, value: p.id })),
+  ];
+  $q.dialog({
+    title: "Move to project",
+    options: { type: "radio", model: props.task.projectId || "", items },
+    cancel: true,
+  }).onOk((projectId: string) => moveTaskToProject(props.task.id, projectId || null));
 }
 async function activateTask() {
   try {
