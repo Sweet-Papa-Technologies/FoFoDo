@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// FoFoDo Storage rules — deployed ONLY to the dedicated fofodo-uploads bucket,
+// so they never affect the shared default bucket other apps use.
+// Comment attachments live under uploads/{uid}/**. Owner-only direct access;
+// rendered in the UI via tokenized download URLs (getDownloadURL).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /uploads/{uid}/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 25 * 1024 * 1024; // 25 MB cap
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

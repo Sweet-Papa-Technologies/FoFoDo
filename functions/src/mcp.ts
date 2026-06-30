@@ -36,10 +36,11 @@ function buildServer(uid: string): McpServer {
       json({ tasks: await repo.listTasks(uid, (view as repo.View) || "active", { hatId, projectId }) }));
 
   (server as any).registerTool("update_task",
-    { description: "Update a task's title, notes, hat, project, due, or status (not 'active' — use set_active).",
+    { description: "Update a task's title, notes, hat, project, due, lifecycle status (not 'active' — use set_active), or workStatus (none|in_progress|blocked|waiting|review).",
       inputSchema: { id: z.string(), title: z.string().optional(), notes: z.string().optional(),
         hatId: z.string().optional(), projectId: z.string().nullable().optional(),
-        due: z.number().nullable().optional(), status: z.string().optional() } },
+        due: z.number().nullable().optional(), status: z.string().optional(),
+        workStatus: z.string().optional() } },
     async (args: any) => json(await repo.updateTask(uid, args.id, args as any)));
 
   (server as any).registerTool("complete_task",
@@ -73,6 +74,16 @@ function buildServer(uid: string): McpServer {
   (server as any).registerTool("get_dashboard",
     { description: "Get the home dashboard: Active Bet, your 3 active tasks, hat balance this week, needs-attention.", inputSchema: {} },
     async () => json(await repo.getDashboard(uid)));
+
+  (server as any).registerTool("add_comment",
+    { description: "Add a markdown comment to a task. Optional attachments are [{url,name,contentType?,size?}].",
+      inputSchema: { taskId: z.string(), body: z.string(),
+        attachments: z.array(z.object({ url: z.string(), name: z.string(), contentType: z.string().optional(), size: z.number().optional() })).optional() } },
+    async ({ taskId, body, attachments }: any) => json(await repo.addComment(uid, taskId, body, attachments || [], "mcp")));
+
+  (server as any).registerTool("list_comments",
+    { description: "List the markdown comments on a task (chronological).", inputSchema: { taskId: z.string() } },
+    async ({ taskId }: any) => json({ comments: await repo.listComments(uid, taskId) }));
 
   (server as any).registerTool("set_reminder",
     { description: "Attach a reminder to a task. fireAt is epoch ms; channels are 'push' and/or 'webhook'.",

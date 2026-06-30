@@ -7,19 +7,26 @@
 import { reactive, computed } from "vue";
 import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc,
-  serverTimestamp, increment, query, where,
+  serverTimestamp, increment, query, where, orderBy,
 } from "firebase/firestore";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import Fuse from "fuse.js";
-import { auth, db } from "./firebase";
+import { Dark } from "quasar";
+import { auth, db, storage } from "./firebase";
 import { api } from "./api";
 import { parseCapture } from "./parse";
 
 export interface Task {
   id: string; title: string; notes?: string; hatId: string; projectId?: string | null;
   status: "inbox" | "next" | "active" | "done" | "snoozed";
+  workStatus?: string; commentCount?: number;
   due?: number | null; snoozeUntil?: number | null; order: number; pushCount?: number;
   createdAt: number; completedAt?: number | null;
+}
+export interface Comment {
+  id: string; body: string; author?: string; createdAt: number;
+  attachments?: { url: string; name: string; contentType?: string | null; size?: number | null }[];
 }
 export interface Project {
   id: string; name: string; hatId: string; status: "active" | "paused" | "snoozed";
@@ -38,7 +45,10 @@ export const state = reactive({
   settings: { aiEnabled: true, cadencePrompts: true, theme: "dark" } as Record<string, any>,
   settingsLoaded: false,
   online: navigator.onLine,
+  openTaskId: null as string | null, // drives the global task-detail modal
 });
+
+export const openTask = (id: string | null) => { state.openTaskId = id; };
 
 let unsub: Array<() => void> = [];
 
@@ -118,6 +128,33 @@ export async function capture(text: string): Promise<void> {
 const tref = (id: string) => doc(db, "users", state.user!.uid, "tasks", id);
 
 export const updateTask = (id: string, patch: Partial<Task>) => updateDoc(tref(id), patch as any);
+export const setWorkStatus = (id: string, workStatus: string) => updateDoc(tref(id), { workStatus });
+
+// ---- Comments (markdown + attachments) ------------------------------------
+const commentsCol = (taskId: string) => collection(db, "users", state.user!.uid, "tasks", taskId, "comments");
+
+export function watchComments(taskId: string, cb: (rows: Comment[]) => void): () => void {
+  return onSnapshot(query(commentsCol(taskId), orderBy("createdAt", "asc")), (snap) => {
+    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+  });
+}
+export async function addComment(taskId: string, body: string, attachments: Comment["attachments"] = []) {
+  await addDoc(commentsCol(taskId), { body: body.slice(0, 20000), attachments: attachments || [], author: "you", createdAt: Date.now() });
+  updateDoc(tref(taskId), { commentCount: increment(1) }).catch(() => undefined);
+}
+export async function deleteComment(taskId: string, commentId: string) {
+  await deleteDoc(doc(db, "users", state.user!.uid, "tasks", taskId, "comments", commentId));
+  updateDoc(tref(taskId), { commentCount: increment(-1) }).catch(() => undefined);
+}
+/** Upload a file to the isolated bucket; returns attachment metadata with a
+ * tokenized download URL that renders without extra auth. */
+export async function uploadAttachment(taskId: string, file: File) {
+  const path = `uploads/${state.user!.uid}/${taskId}/${Date.now()}-${file.name.replace(/[^\w.\-]/g, "_")}`;
+  const sref = storageRef(storage, path);
+  await uploadBytes(sref, file, { contentType: file.type });
+  const url = await getDownloadURL(sref);
+  return { url, name: file.name, contentType: file.type, size: file.size };
+}
 export const completeTask = (id: string) =>
   updateDoc(tref(id), { status: "done", completedAt: Date.now() });
 export const uncompleteTask = (id: string) =>
@@ -191,8 +228,12 @@ export async function saveSettings(patch: Record<string, any>) {
   await setDoc(doc(db, "users", state.user!.uid), { settings: state.settings }, { merge: true });
 }
 export function applyTheme(theme: string) {
-  document.body.classList.toggle("body--light", theme === "light");
-  document.body.classList.toggle("body--dark", theme !== "light");
+  const dark = theme !== "light";
+  document.body.classList.toggle("body--light", !dark);
+  document.body.classList.toggle("body--dark", dark);
+  // Keep Quasar's built-in component theming (cards, inputs, menus) in sync with
+  // our CSS-variable theme — otherwise light mode mixes dark Quasar surfaces.
+  Dark.set(dark);
 }
 
 export const logout = () => signOut(auth);

@@ -47,6 +47,18 @@ export const HAT_ICON: Record<string, string> = {
   ops: "sym_o_settings_backup_restore",
 };
 
+// Secondary work-status labels + colors (independent of the lifecycle status).
+export interface WorkStatusMeta { value: string; label: string; color: string; icon: string; }
+export const WORK_STATUSES: WorkStatusMeta[] = [
+  { value: "none", label: "No status", color: "#8a8f98", icon: "sym_o_remove" },
+  { value: "in_progress", label: "In progress", color: "#6fcf9f", icon: "sym_o_bolt" },
+  { value: "blocked", label: "Blocked", color: "#ff9b86", icon: "sym_o_block" },
+  { value: "waiting", label: "Waiting", color: "#ffc46b", icon: "sym_o_hourglass_empty" },
+  { value: "review", label: "In review", color: "#93a8ff", icon: "sym_o_rate_review" },
+];
+export const workStatusMeta = (v?: string): WorkStatusMeta =>
+  WORK_STATUSES.find((w) => w.value === (v || "none")) || WORK_STATUSES[0];
+
 // Key concept relabels (jargon → clear).
 export const TERMS = {
   activeBet: "Top Priority", // was "Active Bet"

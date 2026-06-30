@@ -37,6 +37,20 @@
       </q-card-section>
     </q-card>
 
+    <!-- Connect apps & agents (MCP) -->
+    <q-card flat bordered class="fofo-tile q-mb-md">
+      <q-card-section>
+        <div class="row items-center justify-between">
+          <div class="text-subtitle2">Connect apps & agents</div>
+          <q-btn dense color="primary" text-color="dark" unelevated icon="sym_o_hub" label="Connect" @click="connectOpen = true" />
+        </div>
+        <div class="text-caption text-grey">
+          Let Claude and other AI agents drive FoFoDo over MCP — one-click browser approval (OAuth) or an API key,
+          plus SSE setup and ready-to-paste config. Endpoint: <code>{{ origin }}/mcp</code>.
+        </div>
+      </q-card-section>
+    </q-card>
+
     <!-- API keys -->
     <q-card flat bordered class="fofo-tile q-mb-md">
       <q-card-section>
@@ -77,6 +91,7 @@
     </q-card>
 
     <div class="text-caption text-grey text-center">FoFoDo v1 · {{ state.user?.email }} · MIT</div>
+    <ConnectModal v-model="connectOpen" @key-created="loadKeys" />
    </div>
   </q-page>
 </template>
@@ -89,10 +104,12 @@ import { api } from "../api";
 import { hatColor } from "../hats";
 import { HAT_DESC } from "../copy";
 import { startTour } from "../onboarding";
+import ConnectModal from "../components/ConnectModal.vue";
 
 const $q = useQuasar();
 const hatDesc = (k: string) => HAT_DESC[k] || k;
 const replayTour = () => startTour(false);
+const connectOpen = ref(false);
 const keys = ref<any[]>([]);
 const freshKey = ref("");
 const keysBusy = ref(false); const expBusy = ref(false);

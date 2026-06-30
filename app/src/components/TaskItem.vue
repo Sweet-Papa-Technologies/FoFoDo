@@ -3,9 +3,12 @@
     <div class="hat-bar" :style="{ background: hatColor(task.hatId), position: 'absolute', left: 0, top: 0, bottom: 0 }" />
     <div class="row items-center no-wrap q-pa-md" style="padding-left: 18px">
       <q-checkbox :model-value="task.status === 'done'" @update:model-value="toggleDone" class="q-mr-sm" />
-      <div class="col">
-        <div :class="{ 'text-strike': task.status === 'done' }" :style="task.status === 'done' ? 'color:var(--on-surface-variant)' : ''">
-          {{ task.title }}
+      <div class="col" style="cursor:pointer" @click="openTask(task.id)">
+        <div class="row items-center q-gutter-xs">
+          <span :class="{ 'text-strike': task.status === 'done' }" :style="task.status === 'done' ? 'color:var(--on-surface-variant)' : ''">
+            {{ task.title }}
+          </span>
+          <span v-if="ws.value !== 'none'" class="status-chip" :style="{ background: ws.color, color: '#1a1613', fontWeight: 600 }">{{ ws.label }}</span>
         </div>
         <div class="row items-center q-gutter-xs q-mt-xs text-caption" style="color:var(--on-surface-variant)">
           <span class="hat-dot" :style="{ background: hatColor(task.hatId) }" />
@@ -14,6 +17,7 @@
           <span v-if="projectName">· <q-icon name="sym_o_folder" size="13px" /> {{ projectName }}</span>
           <span v-if="task.status === 'active'" style="color:var(--primary)">· {{ STATUS_LABEL.active }}</span>
           <span v-if="(task.pushCount || 0) > 0">· {{ TERMS.postponed }} {{ task.pushCount }}×</span>
+          <span v-if="(task.commentCount || 0) > 0">· <q-icon name="sym_o_chat_bubble" size="12px" /> {{ task.commentCount }}</span>
         </div>
       </div>
       <q-btn v-if="task.status !== 'active' && task.status !== 'done'" flat round dense icon="sym_o_bolt"
@@ -76,15 +80,16 @@ import { useQuasar } from "quasar";
 import type { Task } from "../store";
 import {
   activate, completeTask, uncompleteTask, snoozeTask, unsnoozeTask, deleteTask, updateTask, hatName, state,
-  moveTaskToProject, projectById,
+  moveTaskToProject, projectById, openTask,
 } from "../store";
 import { hatColor } from "../hats";
-import { STATUS_LABEL, TERMS } from "../copy";
+import { STATUS_LABEL, TERMS, workStatusMeta } from "../copy";
 
 const props = defineProps<{ task: Task }>();
 const $q = useQuasar();
 
 const projectName = computed(() => projectById(props.task.projectId || undefined)?.name || "");
+const ws = computed(() => workStatusMeta(props.task.workStatus));
 const editDialog = ref(false);
 const draftTitle = ref(props.task.title);
 const draftNotes = ref(props.task.notes || "");

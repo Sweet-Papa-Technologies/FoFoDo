@@ -46,6 +46,11 @@ service cloud.firestore {
         allow update: if isOwner(uid)
                       && (request.resource.data.status != 'active'
                           || resource.data.status == 'active');
+
+        // comments: owner-scoped, markdown + attachment metadata.
+        match /comments/{commentId} {
+          allow read, write: if isOwner(uid);
+        }
       }
 
       // reminders: owner-scoped. The scheduler dispatches via Admin SDK.

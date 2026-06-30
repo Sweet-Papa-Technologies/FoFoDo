@@ -7,7 +7,7 @@ import {
   userRef, tasksRef, projectsRef, hatsRef, remindersRef, eventsRef, db, FieldValue,
 } from "./firebase";
 import { DEFAULT_HATS, DEFAULT_HAT_KEY, CONFIG } from "./config";
-import { isValidHat, isValidStatus, TaskStatus } from "./domain";
+import { isValidHat, isValidStatus, isValidWorkStatus, TaskStatus } from "./domain";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -56,10 +56,12 @@ export async function createTask(uid: string, input: CreateTaskInput) {
     hatId,
     projectId: input.projectId ?? null,
     status,
+    workStatus: "none",
     due: input.due ?? null,
     snoozeUntil: null,
     order: now,
     pushCount: 0,
+    commentCount: 0,
     createdAt: now,
     completedAt: null,
   };
@@ -81,6 +83,7 @@ export interface UpdateTaskInput {
   due?: number | null;
   order?: number;
   status?: TaskStatus; // NOTE: cannot set "active" here (use setActive)
+  workStatus?: string; // secondary progress label (none/in_progress/blocked/waiting/review)
 }
 
 export async function updateTask(uid: string, taskId: string, input: UpdateTaskInput) {
@@ -91,6 +94,7 @@ export async function updateTask(uid: string, taskId: string, input: UpdateTaskI
   if (input.projectId !== undefined) patch.projectId = input.projectId;
   if (input.due !== undefined) patch.due = input.due;
   if (input.order !== undefined) patch.order = input.order;
+  if (input.workStatus !== undefined && isValidWorkStatus(input.workStatus)) patch.workStatus = input.workStatus;
   if (input.status !== undefined) {
     if (input.status === "active") {
       throw new Error("Use set_active to make a task active (WIP-3 enforced).");
@@ -114,6 +118,41 @@ export async function completeTask(uid: string, taskId: string) {
 export async function deleteTask(uid: string, taskId: string) {
   await tasksRef(uid).doc(taskId).delete();
   return { id: taskId, deleted: true };
+}
+
+// ---- Comments (markdown + attachments) ------------------------------------
+
+export interface Attachment { url: string; name: string; contentType?: string; size?: number; }
+
+const commentsCol = (uid: string, taskId: string) => tasksRef(uid).doc(taskId).collection("comments");
+
+export async function addComment(
+  uid: string, taskId: string,
+  body: string, attachments: Attachment[] = [], author = "you"
+) {
+  const clean = (attachments || []).slice(0, 10).map((a) => ({
+    url: String(a.url).slice(0, 2000),
+    name: String(a.name || "file").slice(0, 200),
+    contentType: a.contentType ? String(a.contentType).slice(0, 100) : null,
+    size: typeof a.size === "number" ? a.size : null,
+  }));
+  const ref = commentsCol(uid, taskId).doc();
+  const doc = { body: String(body || "").slice(0, 20000), attachments: clean, author, createdAt: Date.now() };
+  await ref.set(doc);
+  // Keep a denormalized count on the task for list badges.
+  await tasksRef(uid).doc(taskId).update({ commentCount: FieldValue.increment(1) }).catch(() => undefined);
+  return { id: ref.id, ...doc };
+}
+
+export async function listComments(uid: string, taskId: string) {
+  const snap = await commentsCol(uid, taskId).orderBy("createdAt", "asc").limit(500).get();
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+}
+
+export async function deleteComment(uid: string, taskId: string, commentId: string) {
+  await commentsCol(uid, taskId).doc(commentId).delete();
+  await tasksRef(uid).doc(taskId).update({ commentCount: FieldValue.increment(-1) }).catch(() => undefined);
+  return { id: commentId, deleted: true };
 }
 
 /** Snooze: leaves active views, returns to `next` on/after wake date. Bumps the

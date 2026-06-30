@@ -4,13 +4,17 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "storage": {
+    "bucket": "fofoapps-934be-fofodo-uploads",
+    "rules": "storage.rules"
+  },
   "functions": [
     {
       "source": "functions",
       "codebase": "fofodo",
       "runtime": "nodejs22",
       "ignore": ["node_modules", ".git", "*.local", "src", "*.ts", "tsconfig*", ".eslintrc*"],
-      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+      "predeploy": ["NODE_OPTIONS=--max-old-space-size=6144 \"$RESOURCE_DIR/node_modules/.bin/tsc\" --project \"$RESOURCE_DIR/tsconfig.json\""]
     }
   ],
   "hosting": {
