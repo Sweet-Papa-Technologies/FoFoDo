@@ -77,8 +77,9 @@
         <div class="col-12 col-md-6">
           <div class="glass-panel q-pa-md" style="border-radius:var(--radius); min-height:160px">
             <span class="label-caps">Needs attention</span>
-            <div v-if="!d.overdue.length && !d.aging.length && !d.mostAvoided" class="text-body2 q-mt-sm" style="color:var(--on-surface-variant)">
-              All clear. Nice and calm. ✨
+            <div v-if="!d.overdue.length && !d.aging.length && !d.mostAvoided" class="column items-center q-mt-sm text-center">
+              <img src="/img/empty-calm.png" alt="" style="width:120px; height:120px; object-fit:contain; opacity:0.95" />
+              <div class="text-body2" style="color:var(--on-surface-variant)">All clear. Nice and calm. ✨</div>
             </div>
             <template v-else>
               <div class="row q-gutter-lg q-mt-sm">

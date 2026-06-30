@@ -6,25 +6,44 @@ Every tool routes through the **same** repo / WIP-3 / auth code as the REST API,
 
 ---
 
-## Endpoint & transport
+## Endpoints & transports
 
-- **Endpoint (hosted):** `https://fofodo.web.app/mcp`
-- **Endpoint (self-host):** `https://<your-site>.web.app/mcp`
-- **Transport:** Streamable HTTP, **stateless** (no session id is generated). Each request opens a fresh transport, handles the JSON-RPC body, and closes.
-- **Method:** **POST only.** `GET`/`DELETE` to `/mcp` return `405` (`Method not allowed; use POST.`).
+FoFoDo supports **both** MCP HTTP transports:
+
+| Transport | URL | Notes |
+|-----------|-----|-------|
+| **Streamable HTTP** (recommended) | `https://fofodo.web.app/mcp` (POST) | Modern, stateless. What Claude/most clients use. Works through the clean hosting URL. |
+| **SSE** (legacy) | `https://fofodomcp-2ulse5y3hq-uc.a.run.app/mcp/sse` (GET stream) + `/mcp/messages?sessionId=…` (POST) | For older HTTP+SSE clients. **Must use the direct Cloud Run function URL**, not `fofodo.web.app`, because the Firebase Hosting CDN buffers SSE streams. The `fofodoMcp` function is pinned to one instance so SSE sessions survive between the GET stream and message POSTs. |
+
+`GET /mcp` (no SSE) returns `405` with a hint to use POST or `/mcp/sse`.
 
 ---
 
-## Authentication
+## Authentication — two ways
 
-MCP authenticates with a **FoFoDo API key** (REQ-MCP-03), the same key model as the REST API. Send it as either header:
+### 1. OAuth 2.1 "approve in your browser" (recommended for end users)
+
+FoFoDo is its own OAuth 2.1 authorization server (per the MCP auth spec, 2025-06-18), so adding it as a remote MCP server in a client like Claude is a **one-click approve flow** — no API key to paste:
+
+1. The client hits `/mcp` with no token → `401` + `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource"`.
+2. It reads `/.well-known/oauth-protected-resource` → finds the authorization server, then `/.well-known/oauth-authorization-server`.
+3. It dynamically registers (`POST /oauth/register`, RFC 7591) and opens `/oauth/authorize` in a browser.
+4. **You see a FoFoDo consent screen, sign in (Google / email), and click "Approve access."**
+5. The client exchanges a PKCE auth code at `/oauth/token` for a Bearer access token (1 h, with a rotating refresh token) bound to your account and the `/mcp` audience (RFC 8707).
+6. The client calls `/mcp` with `Authorization: Bearer <access-token>`.
+
+Just point your MCP client at `https://fofodo.web.app/mcp` and it will discover and drive this flow automatically.
+
+### 2. API key (good for scripts / FOREMAN)
+
+Send a **FoFoDo API key** (REQ-MCP-03) as either header:
 
 - `X-API-Key: fofodo_...`, or
 - `Authorization: Bearer fofodo_...`
 
-An invalid or missing key returns a JSON-RPC error (`code -32001`, "Invalid or missing FoFoDo API key.") with HTTP `401`. On hosted, per-key quotas apply just as they do on the API.
+Create one via the REST API (`POST /api/keys`) or in the app's **Settings → API keys** (plaintext shown once).
 
-Create a key first via the REST API (`POST /api/keys`) — the plaintext is shown once.
+Either method resolves to the same per-user authorization. An invalid/missing credential returns JSON-RPC `code -32001` with HTTP `401` and the `WWW-Authenticate` header above. On hosted, per-key quotas apply.
 
 ---
 

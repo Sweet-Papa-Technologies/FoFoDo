@@ -8,7 +8,9 @@ import express, { Request, Response } from "express";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { resolveApiKey } from "./apikeys";
+import { resolveOAuthToken, wwwAuthenticate } from "./oauth";
 import { setActive, Wip3Error, NotFoundError } from "./wip3";
 import { captureTask } from "./capture";
 import { userRef } from "./firebase";
@@ -84,12 +86,41 @@ function buildServer(uid: string): McpServer {
 export const mcpApp = express();
 mcpApp.use(express.json({ limit: "1mb" }));
 
-mcpApp.post(["/mcp", "/mcp/"], async (req: Request, res: Response) => {
-  const key = (req.header("x-api-key") || (req.header("authorization") || "").replace(/^Bearer\s+/i, "")).trim();
-  const principal = await resolveApiKey(key);
-  if (!principal) {
-    return res.status(401).json({ jsonrpc: "2.0", error: { code: -32001, message: "Invalid or missing FoFoDo API key." }, id: null });
+/**
+ * Resolve the caller to a uid via EITHER an API key (X-API-Key or
+ * Bearer fofodo_...) OR an OAuth 2.1 access token (Bearer ...). Returns null if
+ * unauthenticated/invalid.
+ */
+async function resolvePrincipal(req: Request): Promise<{ uid: string } | null> {
+  const apiKeyHeader = (req.header("x-api-key") || "").trim();
+  const bearer = (req.header("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (apiKeyHeader) {
+    const r = await resolveApiKey(apiKeyHeader);
+    if (r) return { uid: r.uid };
   }
+  if (bearer) {
+    if (bearer.startsWith("fofodo_")) {
+      const r = await resolveApiKey(bearer);
+      if (r) return { uid: r.uid };
+    } else {
+      const r = await resolveOAuthToken(bearer); // OAuth access token
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+function unauthorized(res: Response) {
+  // RFC 9728: point clients at our protected-resource metadata so they can start
+  // the OAuth "approve in a screen" flow.
+  res.set("WWW-Authenticate", wwwAuthenticate());
+  return res.status(401).json({ jsonrpc: "2.0", error: { code: -32001, message: "Authorization required. Connect with OAuth (approve in browser) or a FoFoDo API key." }, id: null });
+}
+
+// ---- Streamable HTTP transport (modern, stateless) ------------------------
+mcpApp.post(["/mcp", "/mcp/"], async (req: Request, res: Response) => {
+  const principal = await resolvePrincipal(req);
+  if (!principal) return unauthorized(res);
   const server = buildServer(principal.uid);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined }); // stateless
   res.on("close", () => { transport.close(); server.close(); });
@@ -102,6 +133,29 @@ mcpApp.post(["/mcp", "/mcp/"], async (req: Request, res: Response) => {
   }
 });
 
-// MCP Streamable HTTP uses POST; GET/DELETE not needed in stateless mode.
+// ---- SSE transport (legacy; for clients that speak HTTP+SSE) --------------
+// Stateful: the GET opens the event stream, POSTs carry messages keyed by
+// sessionId. The MCP function is pinned to a single instance (see index.ts) so
+// the in-memory session map survives between the two requests.
+const sseSessions: Record<string, { transport: SSEServerTransport; server: McpServer }> = {};
+
+mcpApp.get(["/mcp/sse", "/sse"], async (req: Request, res: Response) => {
+  const principal = await resolvePrincipal(req);
+  if (!principal) return unauthorized(res);
+  const transport = new SSEServerTransport("/mcp/messages", res);
+  const server = buildServer(principal.uid);
+  sseSessions[transport.sessionId] = { transport, server };
+  res.on("close", () => { delete sseSessions[transport.sessionId]; server.close(); });
+  await server.connect(transport);
+});
+
+mcpApp.post(["/mcp/messages", "/messages"], async (req: Request, res: Response) => {
+  const sessionId = String(req.query.sessionId || "");
+  const session = sseSessions[sessionId];
+  if (!session) return res.status(404).json({ jsonrpc: "2.0", error: { code: -32001, message: "Unknown or expired SSE session." }, id: null });
+  await session.transport.handlePostMessage(req, res, req.body);
+});
+
+// Plain GET /mcp (no SSE) → hint clients toward POST/SSE.
 mcpApp.get(["/mcp", "/mcp/"], (_req, res) =>
-  res.status(405).json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed; use POST." }, id: null }));
+  res.status(405).json({ jsonrpc: "2.0", error: { code: -32000, message: "Use POST for Streamable HTTP, or GET /mcp/sse for SSE." }, id: null }));
