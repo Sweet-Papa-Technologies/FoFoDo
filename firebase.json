@@ -1,0 +1,40 @@
+{
+  "firestore": {
+    "database": "fofodo",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "fofodo",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", ".git", "*.local", "src", "*.ts", "tsconfig*", ".eslintrc*"],
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+    }
+  ],
+  "hosting": {
+    "site": "fofodo",
+    "public": "app/dist/pwa",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/api/**", "function": { "functionId": "fofodoApi", "region": "us-central1" } },
+      { "source": "/mcp", "function": { "functionId": "fofodoMcp", "region": "us-central1" } },
+      { "source": "/mcp/**", "function": { "functionId": "fofodoMcp", "region": "us-central1" } },
+      { "source": "**", "destination": "/index.html" }
+    ],
+    "headers": [
+      {
+        "source": "/service-worker.js",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  },
+  "emulators": {
+    "auth": { "port": 9099 },
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5000 },
+    "ui": { "enabled": true }
+  }
+}
