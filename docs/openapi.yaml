@@ -1,0 +1,944 @@
+openapi: 3.0.3
+info:
+  title: FoFoDo REST API
+  version: 1.0.0
+  description: >
+    A deliberately-constrained task tracker. Implemented in functions/src/api.ts and
+    served by the fofodoApi Cloud Function. Two auth modes (Firebase ID token or
+    FoFoDo API key) resolve to the same per-user authorization. WIP-3 (max 3 active
+    tasks) is enforced server-side; activation is rejected on direct task writes.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: https://fofodo.web.app/api
+    description: Hosted
+  - url: https://{site}.web.app/api
+    description: Self-host
+    variables:
+      site:
+        default: fofodo
+
+security:
+  - ApiKeyHeader: []
+  - BearerAuth: []
+
+tags:
+  - name: Health
+  - name: Account
+  - name: Capture
+  - name: Tasks
+  - name: Projects
+  - name: Hats
+  - name: Dashboard
+  - name: Search
+  - name: Reminders
+  - name: AI
+  - name: Settings
+  - name: Keys
+  - name: Data
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check (no auth)
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+                  version: { type: string }
+
+  /bootstrap:
+    post:
+      tags: [Account]
+      summary: Create the user doc and seed the four hats (idempotent)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: object, properties: { ok: { type: boolean } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /capture:
+    post:
+      tags: [Capture]
+      summary: Quick-capture a task into the inbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text: { type: string }
+              required: [text]
+      responses:
+        '200':
+          description: The created task
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/Quota' }
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks by view
+      parameters:
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [today, active, next, inbox, done, snoozed, by_hat, by_project, all]
+            default: active
+        - name: hatId
+          in: query
+          schema: { type: string }
+        - name: projectId
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items: { $ref: '#/components/schemas/Task' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/Quota' }
+    post:
+      tags: [Tasks]
+      summary: Create a task (status 'active' is coerced to 'next')
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTask' }
+      responses:
+        '200':
+          description: The created task
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/Quota' }
+
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Tasks]
+      summary: Get a task
+      responses:
+        '200':
+          description: Task
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Tasks]
+      summary: Update a task (status 'active' is rejected; use /activate)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTask' }
+      responses:
+        '200':
+          description: Updated task
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Tasks]
+      summary: Delete a task
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  deleted: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /tasks/{id}/complete:
+    post:
+      tags: [Tasks]
+      summary: Mark a task done
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Completed task
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /tasks/{id}/activate:
+    post:
+      tags: [Tasks]
+      summary: Commit a task to active (WIP-3 enforced)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bumpTaskId:
+                  type: string
+                  description: An existing active task id to demote to 'next' to make room.
+      responses:
+        '200':
+          description: Activated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { type: string, enum: [active] }
+                  activeCount: { type: integer }
+                  bumped: { type: string }
+        '409': { $ref: '#/components/responses/Wip3' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /tasks/{id}/snooze:
+    post:
+      tags: [Tasks]
+      summary: Snooze a task with an optional wake time
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                until:
+                  type: integer
+                  format: int64
+                  description: Epoch ms wake time; returns to 'next' on/after this.
+      responses:
+        '200':
+          description: Snoozed task
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List projects
+      responses:
+        '200':
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Projects]
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                hatId: { type: string }
+                notes: { type: string }
+              required: [name]
+      responses:
+        '200':
+          description: Created project
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /projects/{id}:
+    patch:
+      tags: [Projects]
+      summary: Update a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                hatId: { type: string }
+                status: { type: string, enum: [active, paused, snoozed] }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /projects/{id}/active-bet:
+    post:
+      tags: [Projects]
+      summary: Set this project as the single Active Bet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                leadingIndicator:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /hats:
+    get:
+      tags: [Hats]
+      summary: List the four hats
+      responses:
+        '200':
+          description: Hats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hats:
+                    type: array
+                    items: { $ref: '#/components/schemas/Hat' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /hats/{id}:
+    patch:
+      tags: [Hats]
+      summary: Rename a hat (rename only; the four slots are fixed)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          description: Updated hat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Hat' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: The four-tile home dashboard
+      responses:
+        '200':
+          description: Dashboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /avoidance:
+    get:
+      tags: [Dashboard]
+      summary: Weekly avoidance audit (deterministic stats + optional AI summary)
+      responses:
+        '200':
+          description: Avoidance stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  perHat:
+                    type: object
+                    additionalProperties: { type: integer }
+                  quietHats:
+                    type: array
+                    items: { type: string }
+                  pausedLongest:
+                    type: object
+                    nullable: true
+                  mostPushed:
+                    type: object
+                    nullable: true
+                  summary:
+                    type: string
+                    nullable: true
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /search:
+    get:
+      tags: [Search]
+      summary: Substring search over tasks and projects
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 25 }
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items: { $ref: '#/components/schemas/Task' }
+                  projects:
+                    type: array
+                    items: { $ref: '#/components/schemas/Project' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /reminders:
+    get:
+      tags: [Reminders]
+      summary: List reminders (ordered by fire time)
+      responses:
+        '200':
+          description: Reminders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders:
+                    type: array
+                    items: { $ref: '#/components/schemas/Reminder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Reminders]
+      summary: Attach a reminder to a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                taskId: { type: string }
+                fireAt: { type: integer, format: int64 }
+                channels:
+                  type: array
+                  items: { type: string, enum: [push, webhook] }
+                webhookUrl: { type: string, nullable: true }
+                webhookSecret: { type: string, nullable: true }
+              required: [taskId, fireAt]
+      responses:
+        '200':
+          description: Created reminder
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reminder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /ai/triage:
+    post:
+      tags: [AI]
+      summary: Suggest a hat for a task (returns aiDisabled when AI off)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Suggestion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestion: { type: object, nullable: true }
+                  aiDisabled: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /ai/what-now:
+    post:
+      tags: [AI]
+      summary: Pick one active task to do now (deterministic fallback)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                energy: { type: string }
+      responses:
+        '200':
+          description: Pick
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pick:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: string }
+                      why: { type: string }
+                  aiDisabled: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /ai/breakdown:
+    post:
+      tags: [AI]
+      summary: Break a task into next-actions (returns aiDisabled when AI off)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Steps
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  steps:
+                    type: array
+                    nullable: true
+                    items: { type: string }
+                  aiDisabled: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Get user settings
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Settings]
+      summary: Update settings (aiEnabled, cadencePrompts, theme)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Settings' }
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /keys:
+    get:
+      tags: [Keys]
+      summary: List API keys (hash never returned)
+      responses:
+        '200':
+          description: Keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items: { $ref: '#/components/schemas/ApiKeyInfo' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Keys]
+      summary: Create an API key (plaintext returned exactly once)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          description: New key (with plaintext)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewApiKey' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /keys/{id}:
+    delete:
+      tags: [Keys]
+      summary: Revoke an API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked: { type: boolean }
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked: { type: boolean, example: false }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /export:
+    get:
+      tags: [Data]
+      summary: Full JSON export of the account
+      responses:
+        '200':
+          description: Export
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exportedAt: { type: string, format: date-time }
+                  version: { type: integer }
+                  user: { type: object, nullable: true }
+                  hats: { type: array, items: { $ref: '#/components/schemas/Hat' } }
+                  projects: { type: array, items: { $ref: '#/components/schemas/Project' } }
+                  tasks: { type: array, items: { $ref: '#/components/schemas/Task' } }
+                  reminders: { type: array, items: { $ref: '#/components/schemas/Reminder' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /delete-account:
+    post:
+      tags: [Data]
+      summary: Irreversibly delete all of the user's data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm:
+                  type: string
+                  enum: [DELETE]
+              required: [confirm]
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: boolean }
+        '400':
+          description: Confirmation required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: confirm_required }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: A FoFoDo API key (fofodo_...). May also be sent as Authorization Bearer.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A Firebase ID token, OR a FoFoDo API key (fofodo_...) as the bearer value.
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid, or revoked credentials
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: not_found }
+              message: { type: string }
+    Wip3:
+      description: WIP-3 limit reached (3 tasks already active)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: wip3_limit }
+              message: { type: string }
+              activeTasks:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    title: { type: string }
+    Quota:
+      description: Rate limit or daily quota exceeded (hosted only)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+              limit: { type: integer }
+              scope: { type: string, enum: [minute, day] }
+              resetSeconds: { type: integer }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
+    Task:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        notes: { type: string }
+        hatId: { type: string }
+        projectId: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [inbox, next, active, done, snoozed]
+        due: { type: integer, format: int64, nullable: true }
+        snoozeUntil: { type: integer, format: int64, nullable: true }
+        order: { type: integer, format: int64 }
+        pushCount: { type: integer }
+        createdAt: { type: integer, format: int64 }
+        completedAt: { type: integer, format: int64, nullable: true }
+    CreateTask:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        notes: { type: string }
+        hatId: { type: string }
+        projectId: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [inbox, next, done, snoozed]
+          description: "'active' is coerced to 'next'; use /tasks/{id}/activate."
+        due: { type: integer, format: int64, nullable: true }
+    UpdateTask:
+      type: object
+      properties:
+        title: { type: string }
+        notes: { type: string }
+        hatId: { type: string }
+        projectId: { type: string, nullable: true }
+        due: { type: integer, format: int64, nullable: true }
+        order: { type: integer, format: int64 }
+        status:
+          type: string
+          enum: [inbox, next, done, snoozed]
+          description: "'active' is rejected; use /tasks/{id}/activate."
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        hatId: { type: string }
+        status:
+          type: string
+          enum: [active, paused, snoozed]
+        isActiveBet: { type: boolean }
+        leadingIndicator: { type: string, nullable: true }
+        notes: { type: string }
+        createdAt: { type: integer, format: int64 }
+    Hat:
+      type: object
+      properties:
+        id: { type: string }
+        key: { type: string, enum: [direction, build, distribution, ops] }
+        name: { type: string }
+        order: { type: integer }
+    Reminder:
+      type: object
+      properties:
+        id: { type: string }
+        taskId: { type: string }
+        fireAt: { type: integer, format: int64 }
+        channels:
+          type: array
+          items: { type: string, enum: [push, webhook] }
+        webhookUrl: { type: string, nullable: true }
+        webhookSecret: { type: string, nullable: true }
+        fired: { type: boolean }
+        firedAt: { type: integer, format: int64, nullable: true }
+        attempts: { type: integer }
+        ownerUid: { type: string }
+    Settings:
+      type: object
+      properties:
+        aiEnabled: { type: boolean }
+        cadencePrompts: { type: boolean }
+        theme: { type: string, enum: [dark, light] }
+    Dashboard:
+      type: object
+      properties:
+        activeBet:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+            leadingIndicator: { type: string, nullable: true }
+        yourThree:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              title: { type: string }
+              hatId: { type: string }
+        hatBalance:
+          type: object
+          additionalProperties: { type: integer }
+        needsAttention:
+          type: object
+          properties:
+            overdue: { type: array, items: { type: object } }
+            aging: { type: array, items: { type: object } }
+            mostAvoided: { type: object, nullable: true }
+    ApiKeyInfo:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        createdAt: { type: integer, format: int64 }
+        lastUsedAt: { type: integer, format: int64, nullable: true }
+        revoked: { type: boolean }
+    NewApiKey:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        plaintext:
+          type: string
+          description: The full key, returned exactly once.
+        createdAt: { type: integer, format: int64 }

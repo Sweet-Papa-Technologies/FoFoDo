@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+functions/lib/
+app/dist/
+
+# Firebase / deploy artifacts
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# Terraform state (local backend — do not commit state/secrets)
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/.terraform.lock.hcl
+
+# Local env / secrets
+.env
+.env.local
+**/.env
+**/.env.local
+
+# Tooling scratch
+.playwright-mcp/
+.DS_Store

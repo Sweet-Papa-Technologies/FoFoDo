@@ -1,0 +1,75 @@
+rules_version = '2';
+
+// FoFoDo Security Rules — deployed to the NAMED "fofodo" database only, so they
+// never affect sibling apps on the shared (default) database (NFR-4, G-5).
+//
+// Core guarantees:
+//   * Per-user isolation: a user can only touch their own users/{uid} subtree.
+//   * WIP-3: clients may NOT transition a task INTO `active`. Activation is
+//     gated by a server-side transaction in the API/MCP layer (Admin SDK,
+//     which bypasses rules). Rules here make a direct client `active` write
+//     impossible, so the 3-task limit cannot be bypassed via the SDK either
+//     (REQ-FOS-01, DoD #3).
+//   * apiKeys / usage are server-only: the hash is never client-readable
+//     (REQ-API-03, G-5).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      // hats: fixed four-slot structure, rename-only (REQ-FOS-02).
+      match /hats/{hatId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // projects: owner-scoped. Active Bet uniqueness is enforced in the app/API.
+      match /projects/{projectId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // tasks: owner-scoped, with the WIP-3 client gate.
+      // A client may create/update a task to any status EXCEPT `active`.
+      // Editing a task that is ALREADY active is allowed (it already passed the
+      // server gate); transitioning OUT of active is allowed.
+      match /tasks/{taskId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid)
+                      && request.resource.data.status != 'active';
+        allow update: if isOwner(uid)
+                      && (request.resource.data.status != 'active'
+                          || resource.data.status == 'active');
+      }
+
+      // reminders: owner-scoped. The scheduler dispatches via Admin SDK.
+      match /reminders/{reminderId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // events: append-only activity log (REQ-FOS-06 inputs).
+      match /events/{eventId} {
+        allow read, create: if isOwner(uid);
+        allow update, delete: if false;
+      }
+
+      // apiKeys: SERVER-ONLY. Created/listed/revoked via the API, which returns
+      // the plaintext key exactly once and stores only the hash. The client can
+      // never read the hash field (REQ-API-03).
+      match /apiKeys/{keyId} {
+        allow read, write: if false;
+      }
+    }
+
+    // usage/quota tracking: server-only (REQ-API-04 / REQ-HOST-02).
+    match /usage/{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

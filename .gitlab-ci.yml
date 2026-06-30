@@ -1,0 +1,51 @@
+# FoFoDo CI/CD (SPEC §NOTES). Build + test the backend and frontend on every
+# push; deploy on the default branch behind a manual gate. Self-host forks can
+# delete the deploy stage or repoint FIREBASE_PROJECT / FIREBASE_TOKEN.
+stages: [build, test, deploy]
+
+default:
+  image: node:22
+
+variables:
+  FIREBASE_PROJECT: fofoapps-934be
+
+# ---- Backend (Cloud Functions) -------------------------------------------
+functions:build:
+  stage: build
+  script:
+    - cd functions && npm ci && npm run build
+  artifacts:
+    paths: [functions/lib/]
+    expire_in: 1 day
+
+functions:test:
+  stage: test
+  needs: ["functions:build"]
+  script:
+    # G-7 mandatory suites: capture parse, WIP-3, reminder scheduling, quota, rules.
+    - cd functions && npm ci && npx vitest run
+  # The Security-Rules suite is emulator-gated and skipped here unless
+  # FIRESTORE_EMULATOR_HOST is set (see functions/src/security-rules.test.ts).
+
+# ---- Frontend (Quasar PWA) -----------------------------------------------
+app:build:
+  stage: build
+  script:
+    - cd app && npm ci && npm run build:fast
+  artifacts:
+    paths: [app/dist/pwa/]
+    expire_in: 1 day
+
+# ---- Deploy (manual, default branch only) --------------------------------
+deploy:firebase:
+  stage: deploy
+  needs: ["functions:build", "app:build"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+  script:
+    - npm i -g firebase-tools
+    - cd functions && npm ci && npm run build && cd ..
+    - cd app && npm ci && npm run build:fast && cd ..
+    - firebase deploy --only firestore,functions,hosting:fofodo --project "$FIREBASE_PROJECT" --token "$FIREBASE_TOKEN" --non-interactive
+  # Requires CI/CD vars: FIREBASE_TOKEN (firebase login:ci).
