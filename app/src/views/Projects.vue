@@ -1,13 +1,14 @@
 <template>
-  <q-page class="q-pa-md" style="max-width: 820px; margin: 0 auto">
+  <q-page class="q-px-md" style="padding-top: var(--margin-focus); padding-bottom: 96px">
+   <div class="focus-col">
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-h6">Projects</div>
-      <q-btn dense color="primary" icon="add" label="New project" @click="create" />
+      <div class="headline-lg">Projects</div>
+      <q-btn dense color="primary" text-color="dark" unelevated rounded icon="sym_o_add" label="New project" @click="create" />
     </div>
 
     <div class="text-caption text-grey q-mb-md">
-      Projects loosely group related tasks. Filter to a project from the sidebar or “Open”.
-      Pausing one hides its tasks from default views without deleting them. Pick one as your Active Bet.
+      Projects loosely group related tasks. Open one to filter to it (or use the sidebar).
+      Pausing a project hides its tasks from your main lists without deleting them, and you can pick one as your Top Priority.
     </div>
 
     <div v-if="!state.projects.length" class="text-grey text-body2 q-pa-lg text-center fofo-tile">
@@ -20,7 +21,7 @@
         <div class="col">
           <div class="row items-center q-gutter-xs">
             <span class="text-subtitle1">{{ p.name }}</span>
-            <q-icon v-if="p.isActiveBet" name="star" color="accent" size="18px"><q-tooltip>Active Bet</q-tooltip></q-icon>
+            <q-icon v-if="p.isActiveBet" name="sym_o_rocket_launch" color="secondary" size="18px"><q-tooltip>Top Priority</q-tooltip></q-icon>
             <q-chip v-if="p.status !== 'active'" dense square color="grey-8" text-color="white">{{ p.status }}</q-chip>
           </div>
           <div class="text-caption text-grey">
@@ -34,7 +35,7 @@
             <q-list style="min-width: 200px">
               <q-item clickable v-close-popup @click="rename(p)"><q-item-section>Rename…</q-item-section></q-item>
               <q-item clickable v-close-popup @click="changeHat(p)"><q-item-section>Change hat…</q-item-section></q-item>
-              <q-item clickable v-close-popup @click="activeBet(p)"><q-item-section>Set as Active Bet…</q-item-section></q-item>
+              <q-item clickable v-close-popup @click="activeBet(p)"><q-item-section>Set as Top Priority…</q-item-section></q-item>
               <q-item v-if="p.status === 'active'" clickable v-close-popup @click="setProjectStatus(p.id, 'paused')"><q-item-section>Pause</q-item-section></q-item>
               <q-item v-else clickable v-close-popup @click="setProjectStatus(p.id, 'active')"><q-item-section>Resume</q-item-section></q-item>
               <q-separator />
@@ -44,6 +45,7 @@
         </q-btn>
       </q-card-section>
     </q-card>
+   </div>
   </q-page>
 </template>
 
@@ -80,7 +82,7 @@ function changeHat(p: Project) {
 }
 function activeBet(p: Project) {
   $q.dialog({
-    title: "Set Active Bet", message: "The one number that tells you it’s working:",
+    title: "Set Top Priority", message: "The one number that tells you it’s working:",
     prompt: { model: p.leadingIndicator || "", type: "text" }, cancel: true,
   }).onOk((li: string) => setActiveBet(p.id, li || null));
 }

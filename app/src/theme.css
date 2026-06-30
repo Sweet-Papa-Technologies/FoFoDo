@@ -1,0 +1,170 @@
+/* FoFoDo — "Sacred Constraints" theme (from the Google Stitch design system).
+ * Dark-first, glassmorphism, Hanken Grotesk, a centered focus column, and the
+ * four hat colors. Applied on top of Quasar; these tokens + utility classes are
+ * used by the Vue components to match the Stitch design. */
+
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --background: #111317;
+  --surface: #111317;
+  --surface-container-lowest: #0c0e12;
+  --surface-container-low: #1a1c20;
+  --surface-container: #1e2024;
+  --surface-container-high: #282a2e;
+  --surface-container-highest: #333539;
+  --on-surface: #e2e2e8;
+  --on-surface-variant: #c4c5d5;
+  --outline: #8e909f;
+  --outline-variant: #444653;
+  --surface-border: rgba(255, 255, 255, 0.08);
+
+  --primary: #b6c4ff;
+  --primary-container: #6c8cff;
+  --on-primary-container: #002376;
+  --secondary: #efc05e;
+  --tertiary: #ffb962;
+  --positive: #3ecf8e;
+  --negative: #ff6b6b;
+
+  --hat-steer: #6c8cff;
+  --hat-build: #3ecf8e;
+  --hat-grow: #ffce6b;
+  --hat-run: #8a8f98;
+
+  --radius: 14px;
+  --container-max: 600px;
+  --gutter: 24px;
+  --margin-focus: 64px;
+}
+
+/* ---- Base ------------------------------------------------------------- */
+body,
+.fofo-font {
+  font-family: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.01em;
+}
+body.body--dark {
+  background: var(--background);
+  color: var(--on-surface);
+}
+/* Light theme fallbacks (kept understated; dark is the default). */
+body.body--light {
+  --background: #f6f7fb;
+  --surface: #ffffff;
+  --surface-container-low: #ffffff;
+  --surface-container: #ffffff;
+  --surface-container-high: #eef0f6;
+  --surface-container-highest: #e6e9f2;
+  --on-surface: #1b1d22;
+  --on-surface-variant: #54586a;
+  --surface-border: rgba(0, 0, 0, 0.08);
+  --on-primary-container: #ffffff;
+  background: var(--background);
+  color: var(--on-surface);
+}
+
+/* ---- Glass surfaces --------------------------------------------------- */
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--surface-border);
+}
+body.body--light .glass-panel {
+  background-color: rgba(255, 255, 255, 0.7);
+}
+.glow-active {
+  box-shadow: 0 0 14px rgba(108, 140, 255, 0.22);
+  border-color: rgba(108, 140, 255, 0.3) !important;
+}
+
+/* ---- Typography helpers ---------------------------------------------- */
+.display-lg { font-size: 44px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.headline-lg { font-size: 30px; font-weight: 600; line-height: 1.2; }
+.title-md { font-size: 19px; font-weight: 600; line-height: 1.35; }
+.label-caps {
+  font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--on-surface-variant);
+}
+
+/* ---- Focus column ----------------------------------------------------- */
+.focus-col { max-width: var(--container-max); margin-left: auto; margin-right: auto; width: 100%; }
+
+/* ---- Hat accents ------------------------------------------------------ */
+.hat-steer { color: var(--hat-steer); }
+.hat-build { color: var(--hat-build); }
+.hat-grow  { color: var(--hat-grow); }
+.hat-run   { color: var(--hat-run); }
+.hat-bar { width: 4px; border-radius: 9999px; align-self: stretch; }
+
+/* ---- Task card -------------------------------------------------------- */
+.task-card {
+  background-color: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+body.body--light .task-card { background-color: rgba(255, 255, 255, 0.75); }
+.task-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); }
+
+/* ---- Sidenav item ----------------------------------------------------- */
+.sidenav-item {
+  border-radius: var(--radius);
+  margin: 2px 8px;
+  color: var(--on-surface-variant);
+  transition: background-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
+}
+.sidenav-item:hover { background-color: var(--surface-container-high); color: var(--on-surface); }
+.sidenav-item.is-active {
+  background-color: var(--primary-container);
+  color: var(--on-primary-container);
+  transform: translateX(4px);
+}
+.sidenav-item.is-active .q-icon { color: var(--on-primary-container) !important; }
+
+/* ---- WIP pill --------------------------------------------------------- */
+.wip-pill {
+  border: 1px solid var(--surface-border);
+  background: var(--surface-container);
+  border-radius: 9999px;
+  padding: 5px 12px;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+}
+.wip-pill.is-full { background: rgba(108, 140, 255, 0.14); border-color: rgba(108, 140, 255, 0.35); }
+.pulse-dot { width: 8px; height: 8px; border-radius: 9999px; animation: fofopulse 2s ease-in-out infinite; }
+@keyframes fofopulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ---- Status chip (pill) ---------------------------------------------- */
+.status-chip {
+  border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em; background: var(--surface-container-high); color: var(--on-surface-variant);
+}
+
+/* ---- Quasar surface overrides to match tokens ------------------------ */
+.q-drawer, .fofo-surface-container { background: var(--surface-container) !important; }
+.q-header.fofo-header { background: var(--background) !important; }
+.q-menu, .q-dialog__inner > .q-card { background: var(--surface-container) !important; color: var(--on-surface); }
+
+/* Material Symbols weight tuning for filled active icons */
+.msym-fill { font-variation-settings: "FILL" 1; }
+
+/* intro.js dark theme tweaks */
+.introjs-tooltip {
+  background: var(--surface-container) !important;
+  color: var(--on-surface) !important;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius) !important;
+  font-family: "Hanken Grotesk", sans-serif;
+}
+.introjs-tooltip * { color: var(--on-surface); }
+.introjs-tooltiptext { font-size: 15px; line-height: 1.5; }
+.introjs-button {
+  background: var(--surface-container-high) !important; color: var(--on-surface) !important;
+  border: 1px solid var(--surface-border) !important; text-shadow: none !important; border-radius: 8px !important;
+}
+.introjs-button.introjs-nextbutton { background: var(--primary-container) !important; color: #fff !important; }
+.introjs-helperLayer { border-radius: var(--radius) !important; }

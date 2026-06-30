@@ -1,6 +1,7 @@
 <template>
-  <q-page class="q-pa-md">
-    <q-input v-model="q" filled autofocus debounce="80" placeholder="Search tasks & projects…" clearable>
+  <q-page class="q-px-md" style="padding-top: var(--margin-focus); padding-bottom: 96px">
+   <div class="focus-col">
+    <q-input v-model="q" outlined autofocus debounce="80" placeholder="Search tasks & projects…" clearable class="glass-panel">
       <template #prepend><q-icon name="search" /></template>
     </q-input>
     <div class="text-caption text-grey q-mt-xs">Searches your local cache — works offline, updates as you type.</div>
@@ -17,6 +18,7 @@
 
       <div v-if="!results.tasks.length && !results.projects.length" class="text-grey q-pa-lg text-center">No matches.</div>
     </div>
+   </div>
   </q-page>
 </template>
 

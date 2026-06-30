@@ -1,22 +1,27 @@
 <template>
   <q-page-container>
-    <q-page class="flex flex-center column q-pa-md">
-      <div class="text-h3 text-weight-bold q-mb-xs">FoFoDo</div>
-      <div class="text-subtitle1 text-grey q-mb-lg text-center" style="max-width: 420px">
-        Capture anything. Commit to three. The limit is the feature.
+    <q-page class="flex flex-center column q-pa-md" style="min-height:100vh">
+      <div class="display-lg" style="font-size:52px">FoFoDo</div>
+      <div class="text-body1 q-mb-xl text-center" style="max-width: 420px; color:var(--on-surface-variant)">
+        Capture anything. Focus on three. The limit is the feature.
       </div>
 
-      <q-card flat bordered class="fofo-tile q-pa-lg" style="width: 360px; max-width: 92vw">
-        <q-btn class="full-width q-mb-md" color="primary" icon="login" label="Continue with Google" @click="google" :loading="busy" />
-        <q-separator class="q-my-md" /><div class="text-center text-caption text-grey q-mb-sm">or with email</div>
-        <q-input v-model="email" dense filled label="Email" type="email" class="q-mb-sm" />
-        <q-input v-model="password" dense filled label="Password" type="password" class="q-mb-md" @keyup.enter="emailAuth" />
+      <div class="glass-panel q-pa-lg" style="width: 380px; max-width: 92vw; border-radius: var(--radius)">
+        <q-btn class="full-width q-mb-md" color="primary" text-color="dark" unelevated rounded
+               icon="sym_o_login" label="Continue with Google" @click="google" :loading="busy" />
+        <div class="row items-center q-my-md">
+          <div class="col" style="height:1px; background:var(--surface-border)" />
+          <div class="q-px-sm text-caption" style="color:var(--on-surface-variant)">or with email</div>
+          <div class="col" style="height:1px; background:var(--surface-border)" />
+        </div>
+        <q-input v-model="email" dense outlined label="Email" type="email" class="q-mb-sm" />
+        <q-input v-model="password" dense outlined label="Password" type="password" class="q-mb-md" @keyup.enter="emailAuth(false)" />
         <div class="row q-gutter-sm">
           <q-btn class="col" outline color="primary" label="Sign in" @click="emailAuth(false)" :loading="busy" />
           <q-btn class="col" flat color="primary" label="Create account" @click="emailAuth(true)" :loading="busy" />
         </div>
-      </q-card>
-      <div class="text-caption text-grey q-mt-lg">Self-hostable · MIT · API + MCP first</div>
+      </div>
+      <div class="text-caption q-mt-xl" style="color:var(--on-surface-variant)">Self-hostable · MIT · API + MCP first</div>
     </q-page>
   </q-page-container>
 </template>

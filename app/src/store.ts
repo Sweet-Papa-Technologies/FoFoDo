@@ -36,6 +36,7 @@ export const state = reactive({
   projects: [] as Project[],
   tasks: [] as Task[],
   settings: { aiEnabled: false, cadencePrompts: true, theme: "dark" } as Record<string, any>,
+  settingsLoaded: false,
   online: navigator.onLine,
 });
 
@@ -53,6 +54,7 @@ export function initAuthWatch() {
     unsub.forEach((u) => u());
     unsub = [];
     state.user = user;
+    state.settingsLoaded = false;
     if (!user) { state.ready = true; state.tasks = []; state.projects = []; state.hats = []; return; }
 
     // Seed user + hats server-side (idempotent), then stream the data.
@@ -71,6 +73,7 @@ export function initAuthWatch() {
       const s = snap.data()?.settings;
       if (s) state.settings = { ...state.settings, ...s };
       applyTheme(state.settings.theme);
+      state.settingsLoaded = true; // signals the first-run tour gate
     }));
     state.ready = true;
   });

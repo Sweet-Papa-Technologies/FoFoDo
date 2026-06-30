@@ -1,20 +1,23 @@
 <template>
-  <div class="q-pa-sm bg-dark fofo-capture full-width">
+  <div class="full-width">
     <q-input
       v-model="text"
       dense
-      filled
+      rounded
+      outlined
       autofocus
-      placeholder="Capture anything…  e.g. call Jamie tomorrow 3pm #grow"
+      class="glass-panel fofo-capture-input"
+      input-class="fofo-font"
+      placeholder="Capture a thought…  try “Email Sam tomorrow 3pm #grow”"
       @keyup.enter="save"
       :loading="saving"
-      aria-label="Quick capture"
+      aria-label="Capture a thought"
     >
-      <template #prepend><q-icon name="add" /></template>
+      <template #prepend><q-icon name="sym_o_add_circle" /></template>
       <template #append>
-        <q-btn v-if="micSupported" flat round dense :icon="listening ? 'mic' : 'mic_none'"
+        <q-btn v-if="micSupported" flat round dense :icon="listening ? 'sym_o_mic' : 'sym_o_mic_none'"
                :color="listening ? 'negative' : undefined" @click="toggleMic" aria-label="Voice capture" />
-        <q-btn flat round dense icon="send" @click="save" :disable="!text.trim()" aria-label="Save" />
+        <q-btn flat round dense icon="sym_o_send" @click="save" :disable="!text.trim()" aria-label="Save" />
       </template>
     </q-input>
   </div>
