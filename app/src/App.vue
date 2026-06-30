@@ -18,6 +18,7 @@
           <q-scroll-area class="col">
             <q-list class="q-py-sm">
               <q-item v-for="it in primaryNav" :key="it.to" clickable v-ripple :to="it.to" :exact="it.exact"
+                      :active="isActive(it)" active-class="fofo-active"
                       class="sidenav-item q-py-sm" :class="{ 'is-active': isActive(it) }"
                       :data-tour="it.tour">
                 <q-item-section avatar style="min-width:40px"><q-icon :name="it.icon" size="22px" /></q-item-section>
@@ -31,6 +32,7 @@
               <div class="q-px-lg q-py-xs label-caps" data-tour="hats">{{ NAV.hats }}</div>
               <q-item v-for="h in state.hats" :key="h.id" clickable v-ripple dense
                       :to="`/tasks/by_hat?hat=${h.key}`"
+                      :active="isHat(h.key)" active-class="fofo-active"
                       class="sidenav-item q-py-sm" :class="{ 'is-active': isHat(h.key) }">
                 <q-item-section avatar style="min-width:40px">
                   <q-icon :name="hatIcon(h.key)" size="22px" :style="{ color: hatColor(h.key) }" />
@@ -48,6 +50,7 @@
               </div>
               <q-item v-for="p in activeProjects" :key="p.id" clickable v-ripple dense
                       :to="`/tasks/by_project?project=${p.id}`"
+                      :active="isProject(p.id)" active-class="fofo-active"
                       class="sidenav-item q-py-sm" :class="{ 'is-active': isProject(p.id) }">
                 <q-item-section avatar style="min-width:40px"><span class="hat-bar" :style="{ background: hatColor(p.hatId), height:'18px' }" /></q-item-section>
                 <q-item-section class="ellipsis">{{ p.name }}</q-item-section>

@@ -22,14 +22,15 @@ export default defineConfig({
       manifest: {
         name: "FoFoDo",
         short_name: "FoFoDo",
-        description: "A constraint-based task tracker. Capture anything, commit to three.",
-        theme_color: "#0f1115",
-        background_color: "#0f1115",
+        description: "A calm, constraint-based task tracker. Capture anything, focus on three.",
+        theme_color: "#1a1613",
+        background_color: "#1a1613",
         display: "standalone",
         start_url: "/",
         icons: [
-          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+          { src: "img/app-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "img/app-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "img/app-icon-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {

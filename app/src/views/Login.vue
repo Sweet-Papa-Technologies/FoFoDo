@@ -1,6 +1,11 @@
 <template>
   <q-page-container>
-    <q-page class="flex flex-center column q-pa-md" style="min-height:100vh">
+    <q-page class="flex flex-center column q-pa-md relative-position" style="min-height:100vh; overflow:hidden">
+      <!-- Warm sunrise hero backdrop (generated via Vertex Imagen) -->
+      <img src="/img/hero-login.png" alt=""
+           style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.5" />
+      <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(26,22,19,0.45), rgba(26,22,19,0.82))" />
+      <div class="relative-position column flex-center" style="z-index:1">
       <div class="display-lg" style="font-size:52px">FoFoDo</div>
       <div class="text-body1 q-mb-xl text-center" style="max-width: 420px; color:var(--on-surface-variant)">
         Capture anything. Focus on three. The limit is the feature.
@@ -22,6 +27,7 @@
         </div>
       </div>
       <div class="text-caption q-mt-xl" style="color:var(--on-surface-variant)">Self-hostable · MIT · API + MCP first</div>
+      </div>
     </q-page>
   </q-page-container>
 </template>

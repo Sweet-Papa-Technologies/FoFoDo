@@ -30,8 +30,9 @@
 
     <AdSlot v-if="FLAGS.ADS_ENABLED" class="q-mb-md" />
 
-    <div v-if="!list.length" class="text-grey text-body2 q-pa-lg text-center fofo-tile">
-      {{ emptyMsg }}
+    <div v-if="!list.length" class="column items-center text-grey text-body2 q-pa-lg text-center fofo-tile">
+      <img :src="emptyImg" alt="" style="width:150px; height:150px; object-fit:contain; opacity:0.95; margin-bottom:8px" />
+      <div>{{ emptyMsg }}</div>
     </div>
     <TaskItem v-for="t in list" :key="t.id" :task="t" />
    </div>
@@ -68,6 +69,8 @@ const title = computed(() => {
   if (props.view === "by_project") return project.value?.name || "Project";
   return TITLES[props.view] || "Tasks";
 });
+
+const emptyImg = computed(() => (props.view === "inbox" ? "/img/empty-inbox.png" : "/img/empty-calm.png"));
 
 const emptyMsg = computed(() => {
   if (props.view === "by_project") return "No tasks in this project yet — add one with “Add task”.";

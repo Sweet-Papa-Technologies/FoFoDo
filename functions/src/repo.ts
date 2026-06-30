@@ -19,7 +19,7 @@ export async function ensureUserBootstrap(uid: string, displayName?: string): Pr
     await uref.set({
       displayName: displayName || "",
       plan: CONFIG.HOSTED ? "hosted-free" : "self",
-      settings: { aiEnabled: false, cadencePrompts: true, theme: "dark" },
+      settings: { aiEnabled: true, cadencePrompts: true, theme: "dark" },
       createdAt: Date.now(),
     });
   }

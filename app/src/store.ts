@@ -35,7 +35,7 @@ export const state = reactive({
   hats: [] as Hat[],
   projects: [] as Project[],
   tasks: [] as Task[],
-  settings: { aiEnabled: false, cadencePrompts: true, theme: "dark" } as Record<string, any>,
+  settings: { aiEnabled: true, cadencePrompts: true, theme: "dark" } as Record<string, any>,
   settingsLoaded: false,
   online: navigator.onLine,
 });
@@ -84,17 +84,34 @@ export const hatName = (key: string) => state.hats.find((h) => h.key === key)?.n
 // ---- Capture (offline-capable) -------------------------------------------
 export async function capture(text: string): Promise<void> {
   if (!state.user || !text.trim()) return;
+  const uid = state.user.uid;
   const p = parseCapture(text);
+  // Did the user explicitly tag a hat (e.g. "#grow")? If so, never override it.
+  const explicitHat = /(^|\s)#\S+/.test(text) && p.hatId !== "ops";
   let projectId: string | null = null;
   if (p.projectHint) {
     const hit = state.projects.find((x) => x.name.toLowerCase() === p.projectHint!.toLowerCase());
     if (hit) projectId = hit.id;
   }
-  await addDoc(tasksCol(state.user.uid), {
+  const ref = await addDoc(tasksCol(uid), {
     title: p.title, notes: "", hatId: p.hatId, projectId,
     status: "inbox", due: p.due, snoozeUntil: null,
     order: Date.now(), pushCount: 0, createdAt: Date.now(), completedAt: null,
   });
+
+  // Smart hat: if AI is on and the user didn't pick a hat, ask the server to
+  // suggest one so captures don't all pile into the default "Run" hat. Fully
+  // async + best-effort — capture never waits on it, and it's reversible.
+  if (state.settings.aiEnabled && state.online && !explicitHat) {
+    api.triage(p.title)
+      .then((r: any) => {
+        const hat = r?.suggestion?.hat;
+        if (hat && hat !== p.hatId && ["direction", "build", "distribution", "ops"].includes(hat)) {
+          updateDoc(doc(db, "users", uid, "tasks", ref.id), { hatId: hat }).catch(() => undefined);
+        }
+      })
+      .catch(() => undefined);
+  }
 }
 
 // ---- Task mutations -------------------------------------------------------
