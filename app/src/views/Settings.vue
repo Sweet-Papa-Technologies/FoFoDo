@@ -26,7 +26,7 @@
         <div class="text-subtitle2 q-mb-sm">Hats (rename only — the four slots are fixed)</div>
         <div v-for="h in state.hats" :key="h.id" class="row items-center q-gutter-sm q-mb-xs">
           <span class="hat-dot" :style="{ background: hatColor(h.key) }" />
-          <q-input dense filled :model-value="h.name" @change="v => renameHat(h.id, String(v))" style="max-width: 220px" />
+          <q-input dense filled :model-value="h.name" @change="(v: any) => renameHat(h.id, String(v))" style="max-width: 220px" />
           <span class="text-caption text-grey">{{ h.key }}</span>
         </div>
       </q-card-section>

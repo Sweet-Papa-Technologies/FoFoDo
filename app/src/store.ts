@@ -128,8 +128,38 @@ export const createProject = (name: string, hatId: string) =>
   });
 export const setProjectStatus = (id: string, status: Project["status"]) =>
   updateDoc(doc(db, "users", state.user!.uid, "projects", id), { status });
+export const renameProject = (id: string, name: string) =>
+  updateDoc(doc(db, "users", state.user!.uid, "projects", id), { name });
+export const setProjectHat = (id: string, hatId: string) =>
+  updateDoc(doc(db, "users", state.user!.uid, "projects", id), { hatId });
+export async function deleteProject(id: string) {
+  // Unlink tasks first so none point at a dead project, then delete the project.
+  const owned = state.tasks.filter((t) => t.projectId === id);
+  await Promise.all(owned.map((t) => updateDoc(tref(t.id), { projectId: null })));
+  await deleteDoc(doc(db, "users", state.user!.uid, "projects", id));
+}
 export const setActiveBet = (projectId: string, leadingIndicator: string | null) =>
   api.setActiveBet(projectId, leadingIndicator);
+
+/** Assign (or clear with null) a task's project. Offline-capable direct write. */
+export const moveTaskToProject = (taskId: string, projectId: string | null) =>
+  updateDoc(tref(taskId), { projectId });
+
+/** Create a task already attached to a project (lands in Next so it's actionable). */
+export async function createTaskInProject(title: string, projectId: string) {
+  const proj = state.projects.find((p) => p.id === projectId);
+  await addDoc(tasksCol(state.user!.uid), {
+    title: title.trim(), notes: "", hatId: proj?.hatId || "ops", projectId,
+    status: "next", due: null, snoozeUntil: null,
+    order: Date.now(), pushCount: 0, createdAt: Date.now(), completedAt: null,
+  });
+}
+
+/** Count of non-done tasks in a project (for the Projects manager). */
+export const projectTaskCount = (projectId: string) =>
+  state.tasks.filter((t) => t.projectId === projectId && t.status !== "done").length;
+
+export const projectById = (id?: string) => state.projects.find((p) => p.id === id) || null;
 
 export const renameHat = (id: string, name: string) =>
   updateDoc(doc(db, "users", state.user!.uid, "hats", id), { name });
