@@ -197,6 +197,7 @@ export async function deleteProject(id: string) {
 }
 export const setActiveBet = (projectId: string, leadingIndicator: string | null) =>
   api.setActiveBet(projectId, leadingIndicator);
+export const clearActiveBet = () => api.clearActiveBet();
 
 /** Assign (or clear with null) a task's project. Offline-capable direct write. */
 export const moveTaskToProject = (taskId: string, projectId: string | null) =>

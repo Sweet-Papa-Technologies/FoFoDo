@@ -9,7 +9,11 @@
           <div class="glass-panel q-pa-md" style="border-radius:var(--radius); min-height:160px">
             <div class="row items-center justify-between q-mb-sm">
               <span class="label-caps">{{ TERMS.activeBet }}</span>
-              <q-icon name="sym_o_rocket_launch" color="primary" size="18px" />
+              <div class="row items-center no-wrap">
+                <q-btn v-if="d.bet" flat dense round size="sm" icon="sym_o_edit" @click="setBet" aria-label="Change Top Priority"><q-tooltip>Change</q-tooltip></q-btn>
+                <q-btn v-if="d.bet" flat dense round size="sm" icon="sym_o_close" @click="clearBet" aria-label="Clear Top Priority"><q-tooltip>Clear</q-tooltip></q-btn>
+                <q-icon v-else name="sym_o_rocket_launch" color="primary" size="18px" />
+              </div>
             </div>
             <template v-if="d.bet">
               <div class="title-md">{{ d.bet.name }}</div>
@@ -137,7 +141,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useQuasar } from "quasar";
-import { dashboard, avoidanceStats, state, hatName, completeTask, setActiveBet } from "../store";
+import { dashboard, avoidanceStats, state, hatName, completeTask, setActiveBet, clearActiveBet } from "../store";
 import { api } from "../api";
 import { hatColor } from "../hats";
 import { NAV, TERMS } from "../copy";
@@ -172,6 +176,10 @@ async function loadAudit() {
   try { const r = await api.avoidance(); auditProse.value = r.summary || "No summary available."; }
   catch { $q.notify({ type: "negative", message: "Needs connection" }); }
   finally { auditBusy.value = false; }
+}
+function clearBet() {
+  $q.dialog({ title: "Clear Top Priority", message: "Unpin your current Top Priority?", cancel: true })
+    .onOk(async () => { try { await clearActiveBet(); } catch (e: any) { $q.notify({ type: "negative", message: e?.message || "Needs connection" }); } });
 }
 function setBet() {
   if (!state.projects.length) { $q.notify({ message: "Create a project first (in the sidebar)." }); return; }

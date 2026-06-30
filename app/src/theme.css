@@ -52,24 +52,23 @@ body.body--dark { background: var(--background); color: var(--on-surface); }
 
 /* Light mode — warm cream pastel. */
 body.body--light {
-  /* Warm "paper" — dimmer than white to avoid glare; clearly stepped surfaces. */
-  --background: #ece2d3;
-  --surface: #f3ebdd;
-  --surface-container-lowest: #f6f0e5;
-  --surface-container-low: #f1e8da;
-  --surface-container: #efe5d5;          /* cards / drawer */
-  --surface-container-high: #e6d8c3;
-  --surface-container-highest: #dccab1;
-  --on-surface: #221a12;                 /* ~14:1 on paper */
-  --on-surface-variant: #54453480;        /* placeholder, replaced below */
-  --on-surface-variant: #574736;          /* ~7:1 — readable, not faint */
+  /* Warm "paper" — a touch deeper than before to cut glare; clearly stepped surfaces. */
+  --background: #e5d9c4;
+  --surface: #efe5d4;
+  --surface-container-lowest: #f3ebdd;
+  --surface-container-low: #ece1cf;
+  --surface-container: #ece1cd;          /* cards / drawer — reads against bg */
+  --surface-container-high: #ddcdb2;
+  --surface-container-highest: #d2bf9f;
+  --on-surface: #20180f;                 /* ~15:1 on paper */
+  --on-surface-variant: #4f3f2c;          /* ~8:1 — readable, never faint */
   --outline: #877760;
   --outline-variant: #c9b89f;
   --surface-border: rgba(74, 50, 20, 0.20);
   --primary: #99500f;                    /* dark orange — AA text/icon on paper */
   --primary-container: #e3924a;          /* deeper orange so dark text reads on fills */
   --on-primary-container: #2a1808;
-  --secondary: #855413;
+  --secondary: #6d430c;                  /* darker amber so accent text/buttons aren't faint */
   --positive: #2e9c72;
   --negative: #c5462f;
   background: var(--background);
@@ -84,6 +83,12 @@ body.body--light {
   border: 1px solid var(--surface-border);
 }
 body.body--light .glass-panel { background-color: var(--surface-container); backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* Quasar's fixed light greys are too faint on cream — use our readable muted tone. */
+body.body--light .text-grey,
+body.body--light .text-grey-5,
+body.body--light .text-grey-6,
+body.body--light .text-grey-7,
+body.body--light .text-grey-8 { color: var(--on-surface-variant) !important; }
 .glow-active { box-shadow: 0 0 16px rgba(240, 168, 104, 0.28); border-color: rgba(240, 168, 104, 0.35) !important; }
 body.body--light .glow-active { box-shadow: 0 0 0 1px rgba(153, 80, 15, 0.35); }
 
