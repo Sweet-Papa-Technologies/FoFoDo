@@ -17,6 +17,8 @@ import * as repo from "./repo";
 export const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "1mb" }));
+// Never let the Firebase Hosting CDN cache API responses (avoids stale GETs).
+app.use((_req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
 
 // Normalize path whether invoked via Hosting rewrite (/api/...) or directly.
 app.use((req, _res, next) => {
@@ -108,6 +110,17 @@ app.post("/tasks/:id/snooze", wrap(async (req, res) => {
 
 app.delete("/tasks/:id", wrap(async (req, res) => {
   res.json(await repo.deleteTask(req.principal.uid, req.params.id));
+}));
+
+// ---- comments (markdown + attachments, REQ-TASK-02 extended) --------------
+app.get("/tasks/:id/comments", wrap(async (req, res) => {
+  res.json({ comments: await repo.listComments(req.principal.uid, req.params.id) });
+}));
+app.post("/tasks/:id/comments", wrap(async (req, res) => {
+  res.json(await repo.addComment(req.principal.uid, req.params.id, req.body?.body || "", req.body?.attachments || []));
+}));
+app.delete("/tasks/:id/comments/:cid", wrap(async (req, res) => {
+  res.json(await repo.deleteComment(req.principal.uid, req.params.id, req.params.cid));
 }));
 
 // ---- projects -------------------------------------------------------------

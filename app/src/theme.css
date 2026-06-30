@@ -52,22 +52,26 @@ body.body--dark { background: var(--background); color: var(--on-surface); }
 
 /* Light mode — warm cream pastel. */
 body.body--light {
-  --background: #fdf6ee;
-  --surface: #fffaf3;
-  --surface-container-lowest: #ffffff;
-  --surface-container-low: #fff7ee;
-  --surface-container: #fdf1e4;
-  --surface-container-high: #f7e8d6;
-  --surface-container-highest: #f1ddc7;
-  --on-surface: #2a211a;          /* ~12:1 on cream */
-  --on-surface-variant: #6b5a49;  /* ~6:1 */
-  --outline: #9a8775;
-  --outline-variant: #e0cdb8;
-  --surface-border: rgba(120, 80, 40, 0.14);
-  --primary: #b5611f;             /* darker orange for text/icons on cream (AA) */
-  --primary-container: #f0a868;
-  --on-primary-container: #3a2410;
-  --secondary: #a8702c;
+  /* Warm "paper" — dimmer than white to avoid glare; clearly stepped surfaces. */
+  --background: #ece2d3;
+  --surface: #f3ebdd;
+  --surface-container-lowest: #f6f0e5;
+  --surface-container-low: #f1e8da;
+  --surface-container: #efe5d5;          /* cards / drawer */
+  --surface-container-high: #e6d8c3;
+  --surface-container-highest: #dccab1;
+  --on-surface: #221a12;                 /* ~14:1 on paper */
+  --on-surface-variant: #54453480;        /* placeholder, replaced below */
+  --on-surface-variant: #574736;          /* ~7:1 — readable, not faint */
+  --outline: #877760;
+  --outline-variant: #c9b89f;
+  --surface-border: rgba(74, 50, 20, 0.20);
+  --primary: #99500f;                    /* dark orange — AA text/icon on paper */
+  --primary-container: #e3924a;          /* deeper orange so dark text reads on fills */
+  --on-primary-container: #2a1808;
+  --secondary: #855413;
+  --positive: #2e9c72;
+  --negative: #c5462f;
   background: var(--background);
   color: var(--on-surface);
 }
@@ -79,8 +83,9 @@ body.body--light {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--surface-border);
 }
-body.body--light .glass-panel { background-color: rgba(255, 252, 247, 0.75); }
+body.body--light .glass-panel { background-color: var(--surface-container); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .glow-active { box-shadow: 0 0 16px rgba(240, 168, 104, 0.28); border-color: rgba(240, 168, 104, 0.35) !important; }
+body.body--light .glow-active { box-shadow: 0 0 0 1px rgba(153, 80, 15, 0.35); }
 
 /* ---- Typography helpers ---------------------------------------------- */
 .display-lg { font-size: 44px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
@@ -111,8 +116,9 @@ body.body--light .glass-panel { background-color: rgba(255, 252, 247, 0.75); }
   border-radius: var(--radius);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
-body.body--light .task-card { background-color: rgba(255, 252, 247, 0.8); }
+body.body--light .task-card { background-color: var(--surface-container); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .task-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22); }
+body.body--light .task-card:hover { box-shadow: 0 4px 14px rgba(74, 50, 20, 0.16); }
 
 /* ---- Sidenav item ----------------------------------------------------- */
 .sidenav-item {
@@ -171,6 +177,19 @@ body.body--light .task-card { background-color: rgba(255, 252, 247, 0.8); }
 .q-page-container, .q-layout { background: var(--background); }
 
 .msym-fill { font-variation-settings: "FILL" 1; }
+
+/* ---- Rendered markdown (notes + comments) ---------------------------- */
+.fofo-md { color: var(--on-surface); font-size: 15px; line-height: 1.6; word-break: break-word; }
+.fofo-md p { margin: 0 0 8px; }
+.fofo-md h1, .fofo-md h2, .fofo-md h3 { margin: 12px 0 6px; line-height: 1.25; }
+.fofo-md a { color: var(--primary); }
+.fofo-md ul, .fofo-md ol { margin: 0 0 8px; padding-left: 22px; }
+.fofo-md img, .fofo-md video { max-width: 100%; border-radius: 10px; border: 1px solid var(--surface-border); }
+.fofo-md code { background: var(--surface-container-high); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+.fofo-md pre { background: var(--surface-container-high); padding: 12px; border-radius: 10px; overflow-x: auto; }
+.fofo-md pre code { background: none; padding: 0; }
+.fofo-md blockquote { border-left: 3px solid var(--outline-variant); margin: 8px 0; padding: 2px 12px; color: var(--on-surface-variant); }
+.fofo-md table { border-collapse: collapse; } .fofo-md td, .fofo-md th { border: 1px solid var(--surface-border); padding: 4px 8px; }
 
 /* ---- intro.js (warm dark) -------------------------------------------- */
 .introjs-tooltip {

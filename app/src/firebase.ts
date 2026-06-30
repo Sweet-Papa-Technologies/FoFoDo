@@ -11,6 +11,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyBgQzrghBw9gjHsF7AbKIyzRjkJdLgJFt0",
@@ -23,10 +24,13 @@ export const firebaseConfig = {
 };
 
 export const DATABASE_ID = "fofodo";
+/** Dedicated, isolated bucket for comment attachments (see terraform). */
+export const UPLOADS_BUCKET = "fofoapps-934be-fofodo-uploads";
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const storage = getStorage(app, `gs://${UPLOADS_BUCKET}`);
 
 // Named database + offline persistence (multi-tab safe).
 export const db = initializeFirestore(

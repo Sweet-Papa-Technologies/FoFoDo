@@ -10,6 +10,17 @@ import { HAT_KEYS, DEFAULT_HAT_KEY, HatKey } from "./config";
 export type TaskStatus = "inbox" | "next" | "active" | "done" | "snoozed";
 export type ProjectStatus = "active" | "paused" | "snoozed";
 
+/**
+ * Work status — a SECONDARY, free-floating progress label, independent of the
+ * lifecycle `status` (inbox/next/active/...). Lets a task in focus also be
+ * marked "Blocked", "Waiting", etc. Default "none".
+ */
+export type WorkStatus = "none" | "in_progress" | "blocked" | "waiting" | "review";
+export const WORK_STATUSES: WorkStatus[] = ["none", "in_progress", "blocked", "waiting", "review"];
+export function isValidWorkStatus(s: string): s is WorkStatus {
+  return (WORK_STATUSES as string[]).includes(s);
+}
+
 export interface Task {
   id?: string;
   title: string;

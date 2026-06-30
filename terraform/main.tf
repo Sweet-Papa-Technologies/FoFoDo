@@ -101,3 +101,30 @@ data "google_firebase_web_app_config" "fofodo" {
   project    = var.project_id
   web_app_id = google_firebase_web_app.fofodo.app_id
 }
+
+# --- Dedicated Storage bucket for comment attachments (multimedia) ----------
+# Isolated from sibling apps so FoFoDo's Storage Security Rules never affect the
+# shared default bucket. CORS allows browser uploads from the hosted origin.
+resource "google_storage_bucket" "fofodo_uploads" {
+  project                     = var.project_id
+  name                        = "${var.project_id}-fofodo-uploads"
+  location                    = "US"
+  uniform_bucket_level_access = true
+  force_destroy               = false
+
+  cors {
+    origin          = ["https://${var.hosting_site_id}.web.app", "https://${var.hosting_site_id}.firebaseapp.com", "http://localhost:9000", "http://localhost:5173"]
+    method          = ["GET", "PUT", "POST", "HEAD"]
+    response_header = ["Content-Type", "Authorization", "Content-Disposition", "x-goog-resumable"]
+    max_age_seconds = 3600
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+# Register the bucket with Firebase so the client SDK + Security Rules apply.
+resource "google_firebase_storage_bucket" "fofodo_uploads" {
+  provider  = google-beta
+  project   = var.project_id
+  bucket_id = google_storage_bucket.fofodo_uploads.name
+}

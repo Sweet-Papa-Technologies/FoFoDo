@@ -107,6 +107,9 @@
         <router-view />
       </q-page-container>
 
+      <!-- Global task detail modal (statuses, notes, comments) -->
+      <TaskDetail />
+
       <!-- Mobile bottom nav (labels aligned with the sidenav) -->
       <q-footer class="lt-md" style="background:rgba(17,19,23,0.85); backdrop-filter:blur(14px); border-top:1px solid var(--surface-border)">
         <div class="row justify-around items-center q-py-xs">
@@ -126,6 +129,7 @@ import { ref, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import Login from "./views/Login.vue";
 import CaptureBox from "./components/CaptureBox.vue";
+import TaskDetail from "./components/TaskDetail.vue";
 import { state, activeCount, logout } from "./store";
 import { hatColor } from "./hats";
 import { NAV, HAT_ICON, HAT_DESC, wipText } from "./copy";

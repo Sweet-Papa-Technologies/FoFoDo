@@ -18,6 +18,10 @@ output "web_app_id" {
   value = google_firebase_web_app.fofodo.app_id
 }
 
+output "uploads_bucket" {
+  value = google_storage_bucket.fofodo_uploads.name
+}
+
 # Client Firebase config (safe to ship in the bundle — these are public identifiers).
 output "web_app_config" {
   value = {

@@ -82,12 +82,14 @@ All tools return their result as a JSON text block (the underlying repo object, 
 | --- | --- | --- |
 | **`capture_task`** | `text` (string) | The created task. Quick-captures into the inbox; natural language is parsed deterministically, with optional AI refinement when the user has AI on. |
 | **`list_tasks`** | `view?` (string: `today`\|`active`\|`next`\|`inbox`\|`done`\|`snoozed`\|`by_hat`\|`by_project`\|`all`; default `active`), `hatId?`, `projectId?` | `{ tasks: [...] }` filtered by the view (respects paused-project hiding). |
-| **`update_task`** | `id` (string), and any of `title?`, `notes?`, `hatId?`, `projectId?` (nullable), `due?` (number, nullable), `status?` | The updated task. **`status: "active"` is not allowed** — use `set_active`. |
+| **`update_task`** | `id` (string), and any of `title?`, `notes?`, `hatId?`, `projectId?` (nullable), `due?` (number, nullable), `status?`, `workStatus?` (`none`\|`in_progress`\|`blocked`\|`waiting`\|`review`) | The updated task. **`status: "active"` is not allowed** — use `set_active`. `workStatus` is the secondary progress label shown on the task. |
 | **`complete_task`** | `id` (string) | The task marked `done`. |
 | **`set_active`** | `id` (string), `bumpTaskId?` (string) | On success, `{ id, status: "active", activeCount, bumped? }`. **Enforces WIP-3 identically to the API:** if 3 are already active and no `bumpTaskId` is given, returns `{ error: "wip3_limit", message, activeTasks: [...] }`; re-call with `bumpTaskId` set to one of those ids to swap. |
 | **`snooze_task`** | `id` (string), `until?` (number, epoch ms) | The snoozed task; it returns to `next` on/after `until`. Increments the avoidance `pushCount`. |
 | **`search`** | `query` (string) | `{ tasks: [...], projects: [...] }` — substring match over task titles/notes and project names. |
 | **`get_dashboard`** | _(none)_ | The home dashboard: `{ activeBet, yourThree, hatBalance, needsAttention }`. |
+| **`add_comment`** | `taskId` (string), `body` (markdown string), `attachments?` (`[{url,name,contentType?,size?}]`) | The created comment. Body is markdown; attachments embed multimedia. |
+| **`list_comments`** | `taskId` (string) | `{ comments: [...] }` in chronological order. |
 | **`set_reminder`** | `taskId` (string), `fireAt` (number, epoch ms), `channels?` (string[]: `push`/`webhook`), `webhookUrl?` (nullable), `webhookSecret?` (nullable) | The created reminder. When `webhookSecret` is set, the dispatched webhook is signed `x-fofodo-signature: sha256=<hmac>`. |
 
 ### WIP-3 over MCP
