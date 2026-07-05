@@ -39,6 +39,39 @@ const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const b64urlFromHex = (hex: string) => Buffer.from(hex, "hex").toString("base64url");
 const token = (bytes = 32) => randomBytes(bytes).toString("base64url");
 
+// The Firebase authDomain hosts the sign-in helper iframe + redirect handler.
+const AUTH_DOMAIN = firebaseWebConfig.authDomain || "fofoapps-934be.firebaseapp.com";
+
+// Escape a value for safe interpolation into HTML text/attributes (defense in
+// depth — the nonce'd CSP already blocks injected inline scripts from running).
+const esc = (s: string) =>
+  String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+// Escape JSON for safe embedding inside a <script> element (prevents </script>
+// and U+2028/2029 breakout).
+const jsonForScript = (v: unknown) =>
+  JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+
+/**
+ * CSP for the OAuth consent page. Firebase Hosting applies a strict site-wide
+ * CSP (script-src 'self' https://apis.google.com) that blocks this page's inline
+ * bootstrap script and its Firebase SDK imports from gstatic. We set our own,
+ * scoped to what the consent flow needs: a per-request nonce for the inline
+ * script, gstatic for the SDK, and the Firebase auth domain / Google for sign-in.
+ */
+const consentCsp = (nonce: string) =>
+  [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    `script-src 'self' 'nonce-${nonce}' https://www.gstatic.com https://apis.google.com`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data:",
+    `connect-src 'self' https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://${AUTH_DOMAIN}`,
+    `frame-src 'self' https://${AUTH_DOMAIN} https://*.firebaseapp.com https://accounts.google.com`,
+  ].join("; ");
+
 export const oauthApp = express();
 oauthApp.use(cors({ origin: true }));
 oauthApp.use(express.json());
@@ -116,7 +149,11 @@ oauthApp.get("/oauth/authorize", async (req: Request, res: Response) => {
   const uris: string[] = client.data()!.redirectUris || [];
   if (!uris.includes(q.redirect_uri)) return sendError(res, "invalid_request", "redirect_uri not registered");
 
-  res.set("content-type", "text/html; charset=utf-8").send(consentPage(q, client.data()!.clientName));
+  const nonce = randomBytes(16).toString("base64");
+  res
+    .set("content-type", "text/html; charset=utf-8")
+    .set("Content-Security-Policy", consentCsp(nonce))
+    .send(consentPage(q, client.data()!.clientName, nonce));
 });
 
 // ---- Approve (called by the consent screen with a Firebase ID token) ------
@@ -225,14 +262,15 @@ function sendError(res: Response, error: string, desc?: string) {
 }
 
 // ---- Consent screen HTML --------------------------------------------------
-function consentPage(q: Record<string, string>, clientName: string): string {
-  const cfg = JSON.stringify(firebaseWebConfig);
-  const params = JSON.stringify({
+function consentPage(q: Record<string, string>, clientName: string, nonce: string): string {
+  const cfg = jsonForScript(firebaseWebConfig);
+  const params = jsonForScript({
     client_id: q.client_id, redirect_uri: q.redirect_uri, code_challenge: q.code_challenge,
     state: q.state || "", scope: q.scope || "mcp", resource: q.resource || MCP_RESOURCE,
   });
+  const name = esc(clientName);
   let clientHost = "the app";
-  try { clientHost = new URL(q.redirect_uri).host; } catch { /* keep default */ }
+  try { clientHost = esc(new URL(q.redirect_uri).host); } catch { /* keep default */ }
   return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Connect to FoFoDo</title>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&display=swap" rel="stylesheet"/>
@@ -251,7 +289,7 @@ function consentPage(q: Record<string, string>, clientName: string): string {
 </style></head><body>
 <div class="card">
   <h1>FoFoDo</h1>
-  <p class="muted"><b>${clientName}</b> wants to connect to your FoFoDo tasks.</p>
+  <p class="muted"><b>${name}</b> wants to connect to your FoFoDo tasks.</p>
 
   <div id="loading">Loading…</div>
 
@@ -264,7 +302,7 @@ function consentPage(q: Record<string, string>, clientName: string): string {
   </div>
 
   <div id="approve" style="display:none">
-    <div class="scope">Allow <b>${clientName}</b> to capture, view, update and complete your tasks (always respecting the WIP‑3 limit). You can revoke access any time in FoFoDo → Settings → API keys.</div>
+    <div class="scope">Allow <b>${name}</b> to capture, view, update and complete your tasks (always respecting the WIP‑3 limit). You can revoke access any time in FoFoDo → Settings → API keys.</div>
     <p class="muted" id="who"></p>
     <button class="primary" id="allow">Approve &amp; connect</button>
     <button class="ghost" id="deny">Cancel</button>
@@ -278,7 +316,7 @@ function consentPage(q: Record<string, string>, clientName: string): string {
 
   <div class="err" id="err"></div>
 </div>
-<script type="module">
+<script type="module" nonce="${nonce}">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
   import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged,
            GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult,
