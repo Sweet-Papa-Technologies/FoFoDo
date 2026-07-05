@@ -13,6 +13,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import { db, FieldValue } from "./firebase";
 import { CONFIG } from "./config";
 import { canClaim, afterFailure } from "./reminders-logic";
+import { assertPublicUrl } from "./net-guard";
 
 const LEASE_MS = 4 * 60 * 1000;
 
@@ -100,6 +101,10 @@ async function dispatchChannels(
 }
 
 async function dispatchWebhook(url: string, secret: string | null, payload: Record<string, unknown>): Promise<void> {
+  // SSRF guard, dispatch-time: re-validate scheme/host and resolve DNS so a URL
+  // that was safe at write time but now resolves to a private/metadata address
+  // (DNS rebinding) is rejected before we ever fetch it.
+  await assertPublicUrl(url);
   const body = JSON.stringify(payload);
   const headers: Record<string, string> = { "content-type": "application/json", "user-agent": "FoFoDo-Reminders/1.0" };
   if (secret) {

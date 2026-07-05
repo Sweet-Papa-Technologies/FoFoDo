@@ -11,7 +11,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { resolveApiKey } from "./apikeys";
 import { resolveOAuthToken, wwwAuthenticate } from "./oauth";
-import { setActive, Wip3Error, NotFoundError } from "./wip3";
+import { setActive, Wip3Error, NotFoundError, ValidationError } from "./wip3";
 import { captureTask } from "./capture";
 import { userRef } from "./firebase";
 import { aiEnabledFor } from "./ai";
@@ -101,7 +101,14 @@ function buildServer(uid: string): McpServer {
     { description: "Attach a reminder to a task. fireAt is epoch ms; channels are 'push' and/or 'webhook'.",
       inputSchema: { taskId: z.string(), fireAt: z.number(), channels: z.array(z.string()).optional(),
         webhookUrl: z.string().nullable().optional(), webhookSecret: z.string().nullable().optional() } },
-    async (args: any) => json(await repo.setReminder(uid, args as any)));
+    async (args: any) => {
+      try {
+        return json(await repo.setReminder(uid, args as any));
+      } catch (e) {
+        if (e instanceof ValidationError) return json({ error: "invalid_request", message: (e as Error).message });
+        throw e;
+      }
+    });
 
   return server;
 }

@@ -7,9 +7,11 @@ import DOMPurify from "dompurify";
 marked.setOptions({ breaks: true, gfm: true });
 
 // Allow <video>/<audio>/<source> so markdown comments can embed media, and make
-// links open safely in a new tab.
-const ALLOWED_TAGS = ["video", "audio", "source", "iframe"];
-const ALLOWED_ATTR = ["controls", "src", "type", "poster", "loop", "muted", "allow", "allowfullscreen", "frameborder"];
+// links open safely in a new tab. NOTE: <iframe> is deliberately NOT allowed —
+// permitting arbitrary iframes lets user/AI-authored notes embed a full-page
+// attacker origin (phishing/clickjacking) inside the trusted app origin.
+const ALLOWED_TAGS = ["video", "audio", "source"];
+const ALLOWED_ATTR = ["controls", "src", "type", "poster", "loop", "muted"];
 
 if (typeof window !== "undefined") {
   DOMPurify.addHook("afterSanitizeAttributes", (node: any) => {

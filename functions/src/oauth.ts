@@ -105,8 +105,38 @@ function asMetadata(_req: Request, res: Response) {
 oauthApp.get("/.well-known/oauth-authorization-server", asMetadata);
 oauthApp.get("/.well-known/oauth-authorization-server/mcp", asMetadata);
 
+// Per-IP rate limit for the (unauthenticated) registration endpoint so it can't
+// be used to flood Firestore with junk oauth_clients docs. Fixed 1h window.
+const REG_LIMIT = 20;
+const REG_WINDOW_MS = 60 * 60 * 1000;
+
+function clientIp(req: Request): string {
+  const xff = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return xff || req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+/** Returns true if the caller is over the registration cap for the current window. */
+async function registrationRateLimited(ip: string): Promise<boolean> {
+  const ref = db.collection("oauth_reg_limits").doc(ip.replace(/[^\w.:-]/g, "_").slice(0, 200));
+  return db.runTransaction(async (t) => {
+    const now = Date.now();
+    const snap = await t.get(ref);
+    const d = snap.exists ? snap.data()! : null;
+    if (!d || now - (d.windowStart || 0) > REG_WINDOW_MS) {
+      t.set(ref, { windowStart: now, count: 1 });
+      return false;
+    }
+    if ((d.count || 0) >= REG_LIMIT) return true;
+    t.update(ref, { count: FieldValue.increment(1) });
+    return false;
+  });
+}
+
 // ---- Dynamic Client Registration (RFC 7591) -------------------------------
 oauthApp.post("/oauth/register", async (req: Request, res: Response) => {
+  if (await registrationRateLimited(clientIp(req))) {
+    return res.status(429).json({ error: "rate_limited", error_description: "too many registrations, try again later" });
+  }
   const redirectUris: string[] = req.body?.redirect_uris || [];
   if (!Array.isArray(redirectUris) || redirectUris.length === 0) {
     return res.status(400).json({ error: "invalid_redirect_uri", error_description: "redirect_uris required" });
@@ -160,6 +190,13 @@ oauthApp.get("/oauth/authorize", async (req: Request, res: Response) => {
 oauthApp.post("/oauth/approve", async (req: Request, res: Response) => {
   const { idToken, client_id, redirect_uri, code_challenge, state, scope, resource } = req.body || {};
   if (!idToken) return res.status(401).json({ error: "login_required" });
+  // Re-assert PKCE here, not just on the /authorize GET: /approve is a separate
+  // POST a client can call directly, so it must independently require a valid
+  // S256 challenge (a base64url SHA-256 digest, 43 chars). Without this a caller
+  // could try to obtain a code with no/weak PKCE binding.
+  if (typeof code_challenge !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(code_challenge)) {
+    return res.status(400).json({ error: "invalid_request", error_description: "valid S256 code_challenge required" });
+  }
   let uid: string;
   try {
     uid = (await getAuth().verifyIdToken(idToken)).uid;

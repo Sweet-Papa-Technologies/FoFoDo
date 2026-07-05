@@ -12,6 +12,7 @@ import {
   persistentMultipleTabManager,
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getActiveAppName } from "./sessions";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyBgQzrghBw9gjHsF7AbKIyzRjkJdLgJFt0",
@@ -27,7 +28,13 @@ export const DATABASE_ID = "fofodo";
 /** Dedicated, isolated bucket for comment attachments (see terraform). */
 export const UPLOADS_BUCKET = "fofoapps-934be-fofodo-uploads";
 
-export const app = initializeApp(firebaseConfig);
+// Multi-account: bind to the active account's "slot". The primary account uses
+// the default app (undefined name → backward compatible); extra accounts each
+// get their own named app with independent persisted auth + Firestore cache.
+const ACTIVE_APP_NAME = getActiveAppName();
+export const app = ACTIVE_APP_NAME
+  ? initializeApp(firebaseConfig, ACTIVE_APP_NAME)
+  : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const storage = getStorage(app, `gs://${UPLOADS_BUCKET}`);

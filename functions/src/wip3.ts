@@ -16,6 +16,9 @@ export class Wip3Error extends Error {
 
 export class NotFoundError extends Error {}
 
+/** Bad user input (e.g. an invalid/unsafe webhook URL). Surfaces as HTTP 400. */
+export class ValidationError extends Error {}
+
 export interface SetActiveResult {
   id: string;
   status: "active";
