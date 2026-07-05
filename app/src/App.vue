@@ -69,15 +69,10 @@
           <div class="q-pa-md" style="border-top:1px solid var(--surface-border)">
             <q-item clickable v-ripple to="/settings" class="sidenav-item q-py-sm">
               <q-item-section avatar style="min-width:40px"><q-icon name="sym_o_settings" size="20px" /></q-item-section>
-              <q-item-section>
-                <div class="title-md" style="font-size:15px">{{ NAV.settings }}</div>
-                <div class="text-caption ellipsis" style="color:var(--on-surface-variant); font-size:11px">{{ state.user.email }}</div>
-              </q-item-section>
+              <q-item-section><div class="title-md" style="font-size:15px">{{ NAV.settings }}</div></q-item-section>
             </q-item>
-            <q-item clickable v-ripple @click="logout" class="sidenav-item q-py-sm">
-              <q-item-section avatar style="min-width:40px"><q-icon name="sym_o_logout" size="20px" /></q-item-section>
-              <q-item-section>{{ NAV.signout }}</q-item-section>
-            </q-item>
+            <!-- Account switcher: current account + switch / add / sign out -->
+            <AccountSwitcher />
           </div>
         </div>
       </q-drawer>
@@ -130,7 +125,8 @@ import { useRoute } from "vue-router";
 import Login from "./views/Login.vue";
 import CaptureBox from "./components/CaptureBox.vue";
 import TaskDetail from "./components/TaskDetail.vue";
-import { state, activeCount, logout } from "./store";
+import AccountSwitcher from "./components/AccountSwitcher.vue";
+import { state, activeCount } from "./store";
 import { hatColor } from "./hats";
 import { NAV, HAT_ICON, HAT_DESC, wipText } from "./copy";
 import { maybeStartTour } from "./onboarding";

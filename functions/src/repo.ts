@@ -8,8 +8,21 @@ import {
 } from "./firebase";
 import { DEFAULT_HATS, DEFAULT_HAT_KEY, CONFIG } from "./config";
 import { isValidHat, isValidStatus, isValidWorkStatus, TaskStatus } from "./domain";
+import { ValidationError } from "./wip3";
+import { validateWebhookUrl } from "./net-guard";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Attachment URLs are only allowed to be http(s) — blocks javascript:/data:/etc. */
+function isHttpUrl(u: unknown): boolean {
+  if (typeof u !== "string") return false;
+  try {
+    const p = new URL(u).protocol;
+    return p === "http:" || p === "https:";
+  } catch {
+    return false;
+  }
+}
 
 /** Create the user doc + seed the four hats on first contact. Idempotent. */
 export async function ensureUserBootstrap(uid: string, displayName?: string): Promise<void> {
@@ -130,12 +143,18 @@ export async function addComment(
   uid: string, taskId: string,
   body: string, attachments: Attachment[] = [], author = "you"
 ) {
-  const clean = (attachments || []).slice(0, 10).map((a) => ({
-    url: String(a.url).slice(0, 2000),
-    name: String(a.name || "file").slice(0, 200),
-    contentType: a.contentType ? String(a.contentType).slice(0, 100) : null,
-    size: typeof a.size === "number" ? a.size : null,
-  }));
+  const clean = (attachments || [])
+    .slice(0, 10)
+    // Only persist http(s) attachment URLs. Dropping javascript:/data:/other
+    // schemes here stops a stored-XSS payload from ever reaching a client
+    // renderer that treats the URL as a link (defense at the storage boundary).
+    .filter((a) => isHttpUrl(a.url))
+    .map((a) => ({
+      url: String(a.url).slice(0, 2000),
+      name: String(a.name || "file").slice(0, 200),
+      contentType: a.contentType ? String(a.contentType).slice(0, 100) : null,
+      size: typeof a.size === "number" ? a.size : null,
+    }));
   const ref = commentsCol(uid, taskId).doc();
   const doc = { body: String(body || "").slice(0, 20000), attachments: clean, author, createdAt: Date.now() };
   await ref.set(doc);
@@ -392,12 +411,20 @@ export async function setReminder(
   const channels = (input.channels && input.channels.length ? input.channels : ["push"]).filter(
     (c) => c === "push" || c === "webhook"
   );
+  // SSRF guard (G-SSRF): a webhook URL is fetched server-side by the scheduler, so
+  // validate it at write time — https only, no internal/private hosts. Dispatch
+  // additionally re-checks via DNS (net-guard.assertPublicUrl) to catch rebinding.
+  let webhookUrl: string | null = null;
+  if (channels.includes("webhook")) {
+    if (!input.webhookUrl) throw new ValidationError("webhookUrl is required for the webhook channel");
+    webhookUrl = validateWebhookUrl(input.webhookUrl);
+  }
   const ref = remindersRef(uid).doc();
   const doc = {
     taskId: input.taskId,
     fireAt: input.fireAt,
     channels,
-    webhookUrl: input.webhookUrl ?? null,
+    webhookUrl,
     webhookSecret: input.webhookSecret ?? null,
     fired: false,
     firedAt: null,

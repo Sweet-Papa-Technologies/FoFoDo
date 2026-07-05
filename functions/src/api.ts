@@ -7,7 +7,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { authenticate, AuthError, Principal } from "./auth";
-import { Wip3Error, NotFoundError, setActive } from "./wip3";
+import { Wip3Error, NotFoundError, ValidationError, setActive } from "./wip3";
 import { aiEnabledFor, aiAvoidanceSummary, aiSuggestTriage, aiWhatNow, aiBreakdown, aiAskBoard } from "./ai";
 import { captureTask } from "./capture";
 import { userRef } from "./firebase";
@@ -247,6 +247,9 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     });
   }
   if (err instanceof NotFoundError) return res.status(404).json({ error: "not_found", message: String((err as Error).message) });
+  if (err instanceof ValidationError) return res.status(400).json({ error: "invalid_request", message: String((err as Error).message) });
+  // Do not leak internal exception detail to clients (info disclosure). Log it
+  // server-side and return a generic message.
   console.error("API error:", err);
-  res.status(500).json({ error: "internal", message: (err as Error)?.message || "error" });
+  res.status(500).json({ error: "internal", message: "Something went wrong. Please try again." });
 });

@@ -16,6 +16,7 @@ import { Dark } from "quasar";
 import { auth, db, storage } from "./firebase";
 import { api } from "./api";
 import { parseCapture } from "./parse";
+import { recordActiveUser } from "./sessions";
 
 export interface Task {
   id: string; title: string; notes?: string; hatId: string; projectId?: string | null;
@@ -66,6 +67,10 @@ export function initAuthWatch() {
     state.user = user;
     state.settingsLoaded = false;
     if (!user) { state.ready = true; state.tasks = []; state.projects = []; state.hats = []; return; }
+
+    // Remember this account against the active slot so the account switcher can
+    // list it and switch back to it later without a re-login.
+    recordActiveUser({ uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL });
 
     // Seed user + hats server-side (idempotent), then stream the data.
     try { await api.bootstrap(); } catch { /* offline: hats may already be cached */ }
